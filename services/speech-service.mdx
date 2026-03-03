@@ -1,0 +1,163 @@
+---
+title: Speech service
+description: Browser speech recognition and synthesis service
+---
+
+## Overview
+
+The `SpeechService` provides speech-to-text and text-to-speech capabilities using the browser's native Web Speech API. This service enables voice input and audio output features throughout the application.
+
+## Service details
+
+**File**: `src/app/_services/__Utils/SpeechService/speech.service.ts`  
+**Provided in**: `root`
+
+## Properties
+
+<ParamField path="recognition" type="any">
+  SpeechRecognition instance (browser API)
+</ParamField>
+
+<ParamField path="isListening" type="boolean" default="false">
+  Indicates whether speech recognition is currently active
+</ParamField>
+
+<ParamField path="transcript" type="string" default="''">
+  The recognized speech text
+</ParamField>
+
+<ParamField path="error" type="string" default="''">
+  Error message from speech recognition
+</ParamField>
+
+## Methods
+
+### startListening()
+
+Starts listening for speech input.
+
+```typescript
+startListening(): void
+```
+
+**Behavior**:
+- Sets `isListening` to `true`
+- Starts the speech recognition engine
+- Supports English (en-US) by default
+- Only captures final results (no interim)
+
+### stopListening()
+
+Stops listening for speech input.
+
+```typescript
+stopListening(): void
+```
+
+**Behavior**:
+- Sets `isListening` to `false`
+- Stops the speech recognition engine
+
+### speakText()
+
+Speaks the current transcript using text-to-speech.
+
+```typescript
+speakText(): string
+```
+
+**Returns**: The spoken transcript text
+
+**Behavior**:
+- Uses `SpeechSynthesisUtterance` API
+- Speaks in English (en-US)
+- Shows alert if no text available
+
+### speakTextCustom()
+
+Speaks custom text with optional language selection.
+
+```typescript
+speakTextCustom(_transcript: string, lang: string = ''): void
+```
+
+<ParamField path="_transcript" type="string" required>
+  The text to speak
+</ParamField>
+
+<ParamField path="lang" type="string" default="'en-US'">
+  Language code for speech synthesis
+</ParamField>
+
+## Browser compatibility
+
+<Warning>
+  The Web Speech API is not supported in all browsers. The service checks for `SpeechRecognition` or `webkitSpeechRecognition` availability.
+</Warning>
+
+**Supported browsers**:
+- Chrome/Edge (full support)
+- Safari (partial support)
+- Firefox (limited support)
+
+## Usage example
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { SpeechService } from './_services/__Utils/SpeechService/speech.service';
+
+@Component({
+  selector: 'app-voice-input',
+  template: `
+    <button (click)="startVoiceInput()">Start Listening</button>
+    <button (click)="stopVoiceInput()">Stop Listening</button>
+    <p>{{ speechService.transcript }}</p>
+    <button (click)="speakText()">Speak</button>
+  `
+})
+export class VoiceInputComponent {
+  speechService = inject(SpeechService);
+
+  startVoiceInput() {
+    this.speechService.startListening();
+  }
+
+  stopVoiceInput() {
+    this.speechService.stopListening();
+  }
+
+  speakText() {
+    this.speechService.speakText();
+  }
+}
+```
+
+## Integration with components
+
+The SpeechService is used by:
+- **SpeechPanelComponent**: Provides UI controls for voice input/output
+- **BaseComponent**: Enables voice feedback for page titles
+- Various form components for voice data entry
+
+## Error handling
+
+The service captures speech recognition errors in the `error` property:
+
+```typescript
+this.recognition.onerror = (event: any) => {
+  this.error = event.error;
+  this.isListening = false;
+  console.error('Error:', this.error);
+};
+```
+
+Common error types:
+- `no-speech`: No speech detected
+- `audio-capture`: Microphone access denied
+- `not-allowed`: Permission not granted
+- `network`: Network error
+
+## See also
+
+- [SpeechPanelComponent](/components/speech-panel) - UI component using this service
+- [BaseComponent](/components/base) - Component with speech integration

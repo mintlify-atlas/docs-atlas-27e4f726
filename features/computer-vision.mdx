@@ -382,6 +382,48 @@ export class BaseService {
   Choose based on your use case and infrastructure.
 </Note>
 
+## VisionHUB component
+
+The `VisionHUBComponent` provides a unified interface for all computer vision and OCR features. It combines camera capture, signature pad, file upload, and processing into a single interactive component.
+
+### Key features
+
+**Multi-source input:**
+- Camera capture (front/back camera switching)
+- Signature pad with drawing capabilities
+- File upload from device
+- Image URL input
+
+**Dual feature modes:**
+1. **OCR mode**: Text extraction with Tesseract (Node.js or C++ backend)
+2. **Computer Vision mode**: Shape detection with OpenCV (Node.js or C++ backend)
+
+**Component structure:**
+
+```typescript
+// src/app/_modules/_Demos/_DemosFeatures/miscelaneous/VisionHUB/vision-HUB.component.ts
+
+export class VisionHUBComponent extends BaseReferenceComponent {
+  readonly selectedFeature = signal<number>(1);   // 1=OCR, 2=CV
+  readonly selectedSource = signal<number>(0);    // Input source
+  readonly selectedEngine = signal<number>(1);    // Backend engine
+  readonly capturedImage = signal<string | null>(null);
+  
+  // Computed engine options based on feature
+  readonly engineList = computed(() => {
+    return this.selectedFeature() === 1 
+      ? [{ id: 1, label: 'Tesseract -> Node.js' }, 
+         { id: 2, label: 'Tesseract -> C++' }]
+      : [{ id: 3, label: 'OpenCV -> Node.js' }, 
+         { id: 4, label: 'OpenCV -> C++' }];
+  });
+}
+```
+
+<Info>
+  VisionHUB uses Angular 21 signals and computed values for reactive UI updates. The engine list automatically adapts when switching between OCR and Computer Vision modes.
+</Info>
+
 ## Related features
 
 <CardGroup cols={2}>

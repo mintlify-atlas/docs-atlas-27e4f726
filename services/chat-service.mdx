@@ -1,0 +1,208 @@
+---
+title: Chat service
+description: Real-time messaging service using Socket.IO
+---
+
+## Overview
+
+The `ChatService` provides real-time bidirectional communication capabilities using Socket.IO. It enables instant messaging features between users through a WebSocket connection to a Node.js backend.
+
+## Service details
+
+**File**: `src/app/_services/__Utils/ChatService/chat.service.ts`  
+**Provided in**: `root`  
+**Dependencies**: `socket.io-client` (^4.8.1)
+
+## Properties
+
+<ParamField path="socket" type="Socket">
+  Socket.IO client instance
+</ParamField>
+
+<ParamField path="messages" type="any[]" default="[]">
+  Array of received messages
+</ParamField>
+
+<ParamField path="onNewMessage" type="Subject<any>">
+  Subject that emits whenever a new message is received
+</ParamField>
+
+## Constructor
+
+The service automatically connects to the chat server on initialization:
+
+```typescript
+constructor(configService: ConfigService) {
+  let url = configService.getConfigValue("baseUrlNodeJsChat");
+  
+  this.socket = io(url, {
+    extraHeaders: {
+      "Access-Control-Allow-Origin": "*"
+    }
+  });
+  
+  this.socket.on('message', (message: any) => {
+    this.messages.push(message);
+    this.onNewMessage.next(message);
+  });
+}
+```
+
+## Methods
+
+### getMessages()
+
+Retrieves all received messages.
+
+```typescript
+getMessages(): Observable<any[]>
+```
+
+**Returns**: Observable emitting the messages array
+
+### sendMessage()
+
+Sends a message to the chat server.
+
+```typescript
+sendMessage(message: string): void
+```
+
+<ParamField path="message" type="string" required>
+  The message text to send
+</ParamField>
+
+**Behavior**:
+- Emits the message through the Socket.IO connection
+- The server broadcasts it to all connected clients
+- Messages are received via the `message` event listener
+
+## Configuration
+
+The chat service URL is configured in the application's configuration file:
+
+```json
+{
+  "baseUrlNodeJsChat": "http://localhost:3000"
+}
+```
+
+The `ConfigService` provides this value during service initialization.
+
+## Usage example
+
+```typescript
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { ChatService } from './_services/__Utils/ChatService/chat.service';
+import { Subscription } from 'rxjs';
+
+@Component({
+  selector: 'app-chat',
+  template: `
+    <div class="messages">
+      <div *ngFor="let msg of messages" class="message">
+        {{ msg.user }}: {{ msg.text }}
+      </div>
+    </div>
+    <input [(ngModel)]="newMessage" (keyup.enter)="send()" />
+    <button (click)="send()">Send</button>
+  `
+})
+export class ChatComponent implements OnInit, OnDestroy {
+  private chatService = inject(ChatService);
+  messages: any[] = [];
+  newMessage: string = '';
+  private subscription?: Subscription;
+
+  ngOnInit() {
+    // Load existing messages
+    this.chatService.getMessages().subscribe(msgs => {
+      this.messages = msgs;
+    });
+
+    // Subscribe to new messages
+    this.subscription = this.chatService.onNewMessage.subscribe(msg => {
+      this.messages.push(msg);
+    });
+  }
+
+  send() {
+    if (this.newMessage.trim()) {
+      this.chatService.sendMessage(this.newMessage);
+      this.newMessage = '';
+    }
+  }
+
+  ngOnDestroy() {
+    this.subscription?.unsubscribe();
+  }
+}
+```
+
+## Real-time updates
+
+The service uses a `Subject` to provide reactive updates:
+
+```typescript
+// Components can subscribe to receive new messages in real-time
+this.chatService.onNewMessage.subscribe(message => {
+  console.log('New message received:', message);
+  // Update UI, show notification, etc.
+});
+```
+
+## Message format
+
+Messages typically follow this structure (server-dependent):
+
+```typescript
+interface ChatMessage {
+  user: string;      // Username or identifier
+  text: string;      // Message content
+  timestamp?: Date;  // When the message was sent
+  room?: string;     // Chat room (if applicable)
+}
+```
+
+## Backend requirements
+
+The service requires a Socket.IO server running on Node.js:
+
+```javascript
+// Example Node.js server setup
+const io = require('socket.io')(3000, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('User connected');
+  
+  socket.on('message', (message) => {
+    // Broadcast to all clients
+    io.emit('message', message);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+```
+
+## Connection management
+
+<Info>
+  The Socket.IO client automatically handles reconnection attempts if the connection is lost.
+</Info>
+
+**Features**:
+- Automatic reconnection on connection loss
+- CORS headers for cross-origin requests
+- WebSocket transport with fallback to polling
+
+## See also
+
+- [ConfigService](/services/config-service) - Provides chat server URL configuration
+- Socket.IO documentation: https://socket.io/docs/v4/

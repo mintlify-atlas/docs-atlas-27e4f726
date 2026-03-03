@@ -129,7 +129,10 @@
           {
             "group": "Utility Services",
             "pages": [
-              "services/file-generation-service"
+              "services/file-generation-service",
+              "services/speech-service",
+              "services/chat-service",
+              "services/search-service"
             ]
           }
         ]

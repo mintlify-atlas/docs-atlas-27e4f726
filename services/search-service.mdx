@@ -1,0 +1,281 @@
+---
+title: Search service
+description: Searchable and sortable data table service with pagination
+---
+
+## Overview
+
+The `SearchService` provides advanced data table functionality including search, sort, and pagination. It manages state for searchable lists and integrates with backend data sources through the `ConfigService` and `BackendService`.
+
+## Service details
+
+**File**: `src/app/_services/__Utils/SearchService/search.service.ts`  
+**Provided in**: `root`
+
+## Dependencies
+
+The service uses dependency injection tokens for configuration:
+
+```typescript
+constructor(
+  @Inject(PAGE_ID) private PAGE_ID: string,
+  @Inject(PAGE_SIZE) private PAGE_SIZE: number,
+  @Inject(SEARCH_TERM) private SEARCH_TERM: string,
+  private pipe: DecimalPipe,
+  private __configService: ConfigService,
+  private backendService: BackendService,
+  private speechService: SpeechService
+)
+```
+
+## State management
+
+### SearchState
+
+The service manages search state with the following structure:
+
+```typescript
+interface _SearchState {
+  page: number;           // Current page number
+  pageSize: number;       // Items per page
+  searchTerm: string;     // Search filter text
+  sortColumn: string;     // Column to sort by
+  sortDirection: string;  // 'asc' or 'desc'
+}
+```
+
+## Properties
+
+<ParamField path="_loading" type="BehaviorSubject<boolean>">
+  Loading state observable
+</ParamField>
+
+<ParamField path="_search$" type="Subject<void>">
+  Subject to trigger search operations
+</ParamField>
+
+<ParamField path="_Pagelist" type="BehaviorSubject<_BaseModel[]>">
+  Observable list of paginated items
+</ParamField>
+
+<ParamField path="_total" type="BehaviorSubject<number>">
+  Total number of items (for pagination)
+</ParamField>
+
+<ParamField path="_state" type="_SearchState">
+  Current search state
+</ParamField>
+
+## Key methods
+
+### GetData()
+
+Loads data from external JSON files based on page configuration.
+
+```typescript
+private GetData(PAGE_ID: string): void
+```
+
+**Behavior**:
+1. Loads page configuration from `ConfigService`
+2. Retrieves page title from environment dictionary
+3. Loads JSON data from configured URL
+4. Sets up search pipeline with RxJS operators
+
+### Search pipeline
+
+The service uses a sophisticated RxJS pipeline for search operations:
+
+```typescript
+this._search$
+  .pipe(
+    tap(() => this._loading!.next(true)),      // Set loading state
+    debounceTime(200),                          // Wait 200ms after last input
+    switchMap(() => this._search()),            // Execute search
+    delay(200),                                 // Add visual delay
+    tap(() => this._loading!.next(false))       // Clear loading state
+  )
+  .subscribe((result) => {
+    this._Pagelist!.next(result.Pagelist);
+    this._total!.next(result.total);
+  });
+```
+
+### _search()
+
+Performs the actual search and pagination logic.
+
+```typescript
+private _search(): Observable<_BaseSearchResult>
+```
+
+**Returns**: Object containing filtered/sorted page list and total count
+
+**Operations**:
+1. Filters data by search term
+2. Sorts by specified column and direction
+3. Paginates results based on page size
+4. Returns current page items and total count
+
+## Getters and setters
+
+### page
+
+```typescript
+get page(): number
+set page(page: number)
+```
+
+Gets or sets the current page number (triggers search).
+
+### pageSize
+
+```typescript
+get pageSize(): number
+set pageSize(pageSize: number)
+```
+
+Gets or sets items per page (triggers search).
+
+### searchTerm
+
+```typescript
+get searchTerm(): string
+set searchTerm(searchTerm: string)
+```
+
+Gets or sets the search filter text (triggers search).
+
+### pageTitle
+
+```typescript
+get pageTitle(): string
+```
+
+Gets the current page title from configuration.
+
+## Observables
+
+<ParamField path="Pagelist$" type="Observable<_BaseModel[]>">
+  Observable of the current page items
+</ParamField>
+
+<ParamField path="total$" type="Observable<number>">
+  Observable of the total item count
+</ParamField>
+
+<ParamField path="loading$" type="Observable<boolean>">
+  Observable of the loading state
+</ParamField>
+
+## Usage example
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { SearchService } from './_services/__Utils/SearchService/search.service';
+import { PAGE_ID, PAGE_SIZE, SEARCH_TERM } from 'src/app/_models/common';
+
+@Component({
+  selector: 'app-data-table',
+  template: `
+    <input 
+      [(ngModel)]="service.searchTerm" 
+      placeholder="Search..."
+    />
+    
+    <table>
+      <thead>
+        <tr>
+          <th sortable="name" (sort)="onSort($event)">Name</th>
+          <th sortable="value" (sort)="onSort($event)">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of service.Pagelist$ | async">
+          <td>{{ item.name }}</td>
+          <td>{{ item.value }}</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <ngb-pagination
+      [(page)]="service.page"
+      [pageSize]="service.pageSize"
+      [collectionSize]="service.total$ | async"
+    ></ngb-pagination>
+  `,
+  providers: [
+    SearchService,
+    { provide: PAGE_ID, useValue: 'PAGE_DEMOS_ANGULAR' },
+    { provide: PAGE_SIZE, useValue: 10 },
+    { provide: SEARCH_TERM, useValue: '' }
+  ]
+})
+export class DataTableComponent {
+  constructor(public service: SearchService) {}
+
+  onSort({ column, direction }: any) {
+    // Sorting is handled automatically by the service
+  }
+}
+```
+
+## Sorting integration
+
+The service works with the `sortable` directive:
+
+```typescript
+import { _SortColumn, _SortDirection } from 'src/app/_directives/sortable.directive';
+
+set sortColumn(sortColumn: _SortColumn) {
+  this._set({ sortColumn });
+}
+
+set sortDirection(sortDirection: _SortDirection) {
+  this._set({ sortDirection });
+}
+```
+
+## Search matching
+
+The service uses a `matches` function for case-insensitive filtering:
+
+```typescript
+function matches(item: _BaseModel, term: string): boolean {
+  return item.name.toLowerCase().includes(term.toLowerCase()) ||
+         item.value.toLowerCase().includes(term.toLowerCase());
+}
+```
+
+## Performance optimization
+
+<Tip>
+  The service uses `debounceTime(200)` to prevent excessive search operations while the user is typing.
+</Tip>
+
+**Optimizations**:
+- Debounced search input (200ms)
+- `switchMap` to cancel pending searches
+- BehaviorSubjects for efficient state updates
+- Paginated results to limit DOM rendering
+
+## Configuration requirements
+
+The service requires page configuration in the environment:
+
+```typescript
+_environment.mainPageListDictionary[PAGE_ID] = {
+  page_name: "Demo Pages",
+  pages: [
+    {
+      url: "/assets/data/demos.json"
+    }
+  ]
+};
+```
+
+## See also
+
+- [SearchComponent](/components/search) - UI component using this service
+- [ConfigService](/services/config-service) - Provides page configuration
+- [BackendService](/services/backend-service) - Backend data integration
