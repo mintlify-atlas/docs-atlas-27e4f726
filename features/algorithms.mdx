@@ -1,0 +1,338 @@
+---
+title: Algorithm features
+description: Explore Dijkstra's shortest path, sorting algorithms, collision detection, and regular expression demos
+---
+
+The Angular PWA Demo includes multiple algorithm visualizations that demonstrate core computer science concepts with interactive canvas-based graphics.
+
+## Overview
+
+The algorithm features showcase computational algorithms with real-time visualization:
+
+<CardGroup cols={2}>
+  <Card title="Dijkstra's algorithm" icon="route" href="#dijkstras-shortest-path">
+    Find the shortest path in a weighted graph
+  </Card>
+  <Card title="Sorting algorithms" icon="arrow-down-a-z" href="#sorting-algorithms">
+    Visualize bubble, quick, and merge sort
+  </Card>
+  <Card title="Collision detection" icon="burst" href="#collision-detection">
+    Physics simulation with energy calculations
+  </Card>
+  <Card title="Regular expressions" icon="rectangle-code" href="#regular-expressions">
+    Pattern matching and XML parsing
+  </Card>
+</CardGroup>
+
+## Dijkstra's shortest path
+
+Implements Dijkstra's algorithm for finding the shortest path between nodes in a weighted graph. The visualization displays vertices and edges on an HTML5 canvas.
+
+### Key features
+
+- Random graph generation with configurable vertex size (1-9 vertices)
+- Multiple backend support (C#, C++, Java Spring Boot)
+- Interactive canvas visualization with grid overlay
+- Distance calculation and path highlighting
+- PDF export of graph visualization
+
+### Implementation
+
+<CodeGroup>
+```typescript Component
+// src/app/_modules/_Demos/_DemosFeatures/algorithm/algorithm-dijkstra/algorithm-dijkstra.component.ts
+
+_GetGraph():void {
+  let _vertexSize  : number = Number.parseInt(this._vertexSizeList.nativeElement.value);
+  let _sourcePoint : number = Number.parseInt(this._sourcePointList.nativeElement.value);
+  this.getGraphIdle = true;
+  
+  let randomVertexInfo!  : Observable<string>;
+  let _progLangId        : number = Number.parseInt(this._languajeList.nativeElement.value);
+  
+  switch(_progLangId) {
+    case 1:  // C#
+      randomVertexInfo = this.algorithmService.getRandomVertex(_vertexSize, _sourcePoint);
+      break;
+    case 2:  // C++
+      randomVertexInfo = this.algorithmService.getRandomVertexCpp(_vertexSize, _sourcePoint);
+      break;
+    case 3:  // Spring Boot
+      randomVertexInfo = this.algorithmService.getRandomVertexSpringBoot(_vertexSize, _sourcePoint);
+      break;
+  }
+  
+  randomVertexInfo.subscribe(randomVertexObserver);
+}
+```
+
+```typescript Service
+// src/app/_services/AlgorithmService/algorithm.service.ts
+
+getRandomVertex(vertexSize: Number, sourcePoint: Number): Observable<string> {
+  let p_url = `${this._configService.getConfigValue('baseUrlNetCore')}api/Dijkstra/GenerateRandomVertex?p_vertexSize=${vertexSize}&p_sourcePoint=${sourcePoint}`;
+  return this.http.get<string>(p_url, this.HTTPOptions_Text);
+}
+
+getRandomVertexCpp(vertexSize: Number, sourcePoint: Number): Observable<string> {
+  let p_url = `${this._configService.getConfigValue('baseUrlNetCoreCPPEntry')}api/Algorithm/GenerateRandomVertex_CPP?p_vertexSize=${vertexSize}&p_sourcePoint=${sourcePoint}`;
+  return this.http.get<string>(p_url, this.HTTPOptions_Text);
+}
+```
+
+```typescript Drawing
+// Canvas drawing methods
+
+DrawPoints(points: string[], strokeStyle: string): void {
+  for (let index = 0; index < points.length; index++) {
+    let coordinates = points[index].replace('[', '').replace(']', '');
+    let coordinateArray = coordinates.split(',');
+    let coordinate_x = Number.parseInt(coordinateArray[0]);
+    let coordinate_y = Number.parseInt(coordinateArray[1]);
+    
+    this.DrawPoint(index.toString(), coordinate_x, coordinate_y, strokeStyle);
+  }
+}
+
+DrawLines(pointArray: string[], matrixArray: string[], strokeStyle: string, drawingSubSet: Boolean): void {
+  // Create adjacency matrix
+  let matrix = new Array(matrixArray.length);
+  for (let index = 0; index < matrixArray.length; index++) {
+    matrix[index] = new Array(matrixArray.length);
+  }
+  
+  // Draw lines between connected vertices
+  for (let index_x = 0; index_x < matrixArray.length; index_x++) {
+    for (let index_y = (index_x + 1); index_y < matrixArray.length; index_y++) {
+      let pointValue = matrix[index_x][index_y];
+      if (pointValue != "0") {
+        this.DrawLine(x1, y1, x2, y2);
+      }
+    }
+  }
+}
+```
+</CodeGroup>
+
+### Usage
+
+1. Select the number of vertices (1-9)
+2. Choose a source point (starting vertex)
+3. Select backend language (C#, C++, or Java)
+4. Click "Generate Graph" to create a random weighted graph
+5. Select a destination from the distance list to highlight the shortest path
+6. Export the visualization as PDF
+
+## Sorting algorithms
+
+Visualizes sorting algorithms step-by-step with animated canvas rectangles showing array element positions during the sort process.
+
+### Supported algorithms
+
+- Bubble sort
+- Quick sort
+- Merge sort
+- Insertion sort
+- Selection sort
+
+### Implementation
+
+```typescript Component
+// src/app/_modules/_Demos/_DemosFeatures/algorithm/algorithm-sort/algorithm-sort.component.ts
+
+public GetSort() {
+  let selectedIndex  : number = this.SortAlgorithmList.nativeElement.options.selectedIndex;
+  let p_sortAlgorith : number = this.SortAlgorithmList.nativeElement.options[selectedIndex].value;
+  
+  if (p_sortAlgorith == 0) {
+    this.status_message.set('PLEASE SELECT AN ALGORITHM');
+    return;
+  }
+  
+  let _p_unsortedList : string = this.mensajes.nativeElement.innerHTML;
+  let GetSortInfo!    : Observable<string>;
+  let _progLangId     : number = Number.parseInt(this._languajeList.nativeElement.value);
+  
+  switch(_progLangId) {
+    case 1: // C#
+      GetSortInfo = this.algorithmService.SortBenchMark_getSort_C_Sharp(p_sortAlgorith, p_unsortedList);
+      break;
+    case 2: // C++
+      GetSortInfo = this.algorithmService.getSort_CPP(p_sortAlgorith, p_unsortedList);
+      break;
+  }
+  
+  GetSortInfo.subscribe(GetSortInfoObserver);
+}
+```
+
+### Visualization
+
+The sorting process is animated with a configurable delay:
+
+```typescript Visualization
+DrawStep(): void {
+  if (this.indexDraw >= this.stringMatrix.length) {
+    this.status_message.set("LIST HAS BEEN SORTED CORRECTLY");
+    return;
+  }
+  
+  this.lblStatus.set(`Step ${this.indexDraw} of ${this.stringMatrix.length-1}`);
+  
+  let stringArray_current = this.stringMatrix[this.indexDraw].split(",");
+  let numberArray: SortInfo[] = [];
+  
+  stringArray_current.forEach((element: string, index: number) => {
+    let swapStyle = (stringArray_current[index] != stringArray_past[index]);
+    let sortInfo  = new SortInfo(element, swapStyle);
+    numberArray.push(sortInfo);
+  });
+  
+  this.drawEngine?.DrawGrid();
+  this.drawEngine?.DrawRectangles(numberArray);
+  
+  this.indexDraw++;
+  setTimeout(() => { this.DrawStep() }, this.delayInMilliseconds);
+}
+```
+
+## Collision detection
+
+Physics-based ball simulation demonstrating collision detection, gravity, friction, and energy conservation principles.
+
+### Physics calculations
+
+The simulation calculates and displays real-time physics metrics:
+
+<Tabs>
+  <Tab title="Kinetic energy">
+    ```typescript
+    // KE = ½mv²
+    const keScope = { m: this.ball.mass, v: this.speed };
+    this.kineticEnergy = evaluate('0.5 * m * v^2', keScope);
+    this.keFormula = `½×${this.ball.mass}×${this.speed.toFixed(1)}² = ${this.kineticEnergy.toFixed(1)}`;
+    ```
+  </Tab>
+  <Tab title="Potential energy">
+    ```typescript
+    // PE = mgh
+    const height = this.canvasHeight - this.currentY;
+    const peScope = { m: this.ball.mass, g: this.gravity, h: height };
+    this.potentialEnergy = evaluate('m * g * h', peScope);
+    this.peFormula = `${this.ball.mass}×${this.gravity}×${height.toFixed(1)} = ${this.potentialEnergy.toFixed(1)}`;
+    ```
+  </Tab>
+  <Tab title="Momentum">
+    ```typescript
+    // p = mv
+    const pScope = { m: this.ball.mass, v: this.speed };
+    this.momentum = evaluate('m * v', pScope);
+    this.momentumFormula = `${this.ball.mass}×${this.speed.toFixed(1)} = ${this.momentum.toFixed(1)}`;
+    ```
+  </Tab>
+</Tabs>
+
+### Collision handling
+
+```typescript Collision
+animate() {
+  // Apply gravity
+  this.vy += this.gravity;
+  this.currentX += this.vx;
+  this.currentY += this.vy;
+  
+  // Wall collisions
+  if (this.currentX + this.ball.radius > this.canvasWidth) {
+    this.currentX = this.canvasWidth - this.ball.radius;
+    this.vx = -this.vx * this.restitution;
+    if (Math.abs(this.vx) < 0.1) this.vx = 0;
+  }
+  
+  // Floor collision with friction
+  if (this.currentY + this.ball.radius > this.canvasHeight) {
+    this.currentY = this.canvasHeight - this.ball.radius;
+    this.vy = -this.vy * this.restitution;
+    this.vx *= this.friction;
+  }
+  
+  this.updateCalculations();
+}
+```
+
+<Note>
+  The simulation uses `mathjs` for precise mathematical calculations and supports responsive canvas sizing.
+</Note>
+
+## Regular expressions
+
+Interactive regular expression tester with XML data parsing and pattern matching visualization.
+
+### Features
+
+- Multiple backend support (C#, C++)
+- XML data highlighting
+- Pattern extraction and display
+- Match count reporting
+
+### Implementation
+
+```typescript Component
+// src/app/_modules/_Demos/_DemosFeatures/algorithm/algorithm-reg-ex/algorithm-reg-ex.component.ts
+
+GetRegex(): void {
+  let selectedIndex   : number = this.tagSearch.nativeElement.options.selectedIndex;
+  let tagSearchIndex  : number = this.tagSearch.nativeElement.options[selectedIndex].value;
+  let textSearchValue : string = this.textSearch.nativeElement.value;
+  let _progLangId     : number = Number.parseInt(this._languajeList.nativeElement.value);
+  
+  let regExInfo!: Observable<string>;
+  
+  switch(_progLangId) {
+    case 1: // C#
+      regExInfo = this.algorithmService._RegExEval(tagSearchIndex, textSearchValue);
+      break;
+    case 2: // C++
+      regExInfo = this.algorithmService._RegExEval_CPP(tagSearchIndex, textSearchValue);
+      break;
+  }
+  
+  regExInfo.subscribe({
+    next: (data: string) => {
+      let resultArray = data.split("|");
+      let matchAmt       = resultArray[0];
+      let xmlHighlighted = resultArray[1];
+      this.pattern       = UtilManager.DebugHostingContent(resultArray[2]);
+      
+      this.mensajes.nativeElement.innerHTML = xmlHighlighted;
+      this.status_message.set('[' + matchAmt + '] MATCHES FOUND');
+    }
+  });
+}
+```
+
+### Service methods
+
+```typescript Service
+// src/app/_services/AlgorithmService/algorithm.service.ts
+
+public _RegExEval(tagSearchIndex: number, textSearchValue: string): Observable<string> {
+  let p_url = `${this._configService.getConfigValue('baseUrlNetCore')}api/RegExManager/RegExEval?p_tagSearch=${tagSearchIndex}&p_textSearch=${textSearchValue}`;
+  return this.http.get<string>(p_url, this.HTTPOptions_Text);
+}
+
+public _RegExEval_CPP(tagSearchIndex: number, textSearchValue: string): Observable<string> {
+  let p_url = `${this._configService.getConfigValue('baseUrlNetCoreCPPEntry')}api/Algorithm/_RegExEval_CPP?p_tagSearch=${tagSearchIndex}&p_textSearch=${textSearchValue}`;
+  return this.http.get<string>(p_url, this.HTTPOptions_Text);
+}
+```
+
+## Related features
+
+<CardGroup cols={2}>
+  <Card title="Games" icon="gamepad" href="/features/games">
+    Interactive games with AI opponents
+  </Card>
+  <Card title="Machine learning" icon="brain" href="/features/machine-learning">
+    TensorFlow and linear regression demos
+  </Card>
+</CardGroup>

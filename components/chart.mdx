@@ -1,0 +1,352 @@
+---
+title: Chart component
+description: Interactive chart visualization component with PDF export capabilities using Chart.js
+---
+
+The ChartComponent provides interactive data visualization capabilities using Chart.js. It fetches data from backend services and renders pie charts and bar charts with the ability to export them as PDF files.
+
+## Overview
+
+This component demonstrates:
+- Creating pie and bar charts using Chart.js
+- Fetching data from backend APIs
+- Exporting charts to PDF using html2canvas and jsPDF
+- Speech feedback integration
+- Responsive chart rendering
+
+## Component metadata
+
+<CodeGroup>
+```typescript Component selector
+@Component({
+  selector: 'app-chart',
+  templateUrl: './chart.component.html',
+  styleUrl: './chart.component.css',
+  standalone: false
+})
+```
+</CodeGroup>
+
+Location: `src/app/_modules/_Demos/_DemosFeatures/files-generation/chart/chart.component.ts:14-24`
+
+## Dependencies
+
+The component relies on these key libraries:
+
+<CardGroup cols={2}>
+  <Card title="Chart.js" icon="chart-simple">
+    Version: ^3.9.1
+    
+    Used for rendering interactive charts (pie and bar charts)
+  </Card>
+  <Card title="jsPDF" icon="file-pdf">
+    Version: ^2.5.1
+    
+    Generates PDF documents from chart visualizations
+  </Card>
+  <Card title="html2canvas" icon="image">
+    Version: ^1.4.1
+    
+    Captures HTML elements as images for PDF export
+  </Card>
+</CardGroup>
+
+## Properties
+
+### Signals
+
+```typescript
+pdf_message_csv = signal<string>('');  // Status message for pie chart PDF generation
+pdf_message_xls = signal<string>('');  // Status message for bar chart PDF generation
+```
+
+Location: `chart.component.ts:30-31`
+
+### Chart properties
+
+<Tabs>
+  <Tab title="Pie chart">
+    ```typescript
+    @ViewChild('canvas_csv') canvas_csv: any;
+    @ViewChild('divPieChart_CSV') divPieChart_CSV: any;
+    public pieChartVar_csv: any;
+    ```
+    
+    Location: `chart.component.ts:36-40`
+  </Tab>
+  <Tab title="Bar chart">
+    ```typescript
+    @ViewChild('canvas_xls') canvas_xls: any;
+    @ViewChild('divPieChart_XLS') divPieChart_xls: any;
+    public pieChartVar_xls: any;
+    ```
+    
+    Location: `chart.component.ts:46-50`
+  </Tab>
+</Tabs>
+
+## Methods
+
+### SetPieChart()
+
+Initializes and renders a pie chart with data from the backend.
+
+```typescript
+SetPieChart(): void
+```
+
+Location: `chart.component.ts:91-181`
+
+**Process:**
+
+1. Fetches CSV statistical data from backend
+2. Parses JSON response
+3. Builds chart labels, data, and background colors
+4. Creates Chart.js pie chart instance
+
+<CodeGroup>
+```typescript Example configuration
+const data = {
+  labels: statLabels,
+  datasets: [{
+    label: 'CITIES',
+    data: statData,
+    backgroundColor: statBackgroundColor,
+    hoverOffset: 4
+  }]
+};
+
+this.pieChartVar_csv = new Chart(context, {
+  type: 'pie',
+  data: data,
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+      title: {
+        display: true,
+        text: 'CITIES'
+      }
+    }
+  }
+});
+```
+</CodeGroup>
+
+### SetBarChart()
+
+Initializes and renders a bar chart with session count data.
+
+```typescript
+SetBarChart(): void
+```
+
+Location: `chart.component.ts:183-265`
+
+**Process:**
+
+1. Fetches log statistics from backend
+2. Parses JSON data
+3. Creates labels combining page names and IP values
+4. Renders bar chart with session count data
+
+<CodeGroup>
+```typescript Chart configuration
+this.pieChartVar_xls = new Chart(context, {
+  type: 'bar',
+  data: data,
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'SESSION COUNT'
+      }
+    }
+  }
+});
+```
+</CodeGroup>
+
+### GetPDF()
+
+Exports a chart to PDF format.
+
+```typescript
+GetPDF(P_fileName: string): void
+```
+
+**Parameters:**
+- `P_fileName` - Chart identifier (`'[PIE CHART]'` or `'[BAR CHART]'`)
+
+Location: `chart.component.ts:270-301`
+
+<Steps>
+  <Step title="Set loading state">
+    Updates the appropriate signal with a loading message
+  </Step>
+  <Step title="Call PDF service">
+    Invokes `pdfService._GetPDF()` with chart canvas and container elements
+  </Step>
+  <Step title="Handle response">
+    Updates signal with success or error message
+  </Step>
+  <Step title="Announce completion">
+    Uses speech service to announce the result
+  </Step>
+</Steps>
+
+<CodeGroup>
+```typescript Usage example
+this.pdfService._GetPDF(
+  P_fileName,
+  (P_fileName == '[PIE CHART]') ? this.canvas_csv : this.canvas_xls,
+  (P_fileName == '[PIE CHART]') ? this.divPieChart_CSV : this.divPieChart_xls,
+  P_fileName,
+).subscribe({
+  next: (fileName: string) => {
+    fileName_output = fileName;
+  },
+  error: (error: Error) => {
+    let msg = 'An error occurred : ' + error.message;
+    (P_fileName == '[PIE CHART]') ? 
+      this.pdf_message_csv.set(msg) : 
+      this.pdf_message_xls.set(msg);
+  },
+  complete: () => {
+    let msg = `PDF file generated correctly`;
+    (P_fileName == '[PIE CHART]') ? 
+      this.pdf_message_csv.set(msg) : 
+      this.pdf_message_xls.set(msg);
+  }
+});
+```
+</CodeGroup>
+
+## Lifecycle hooks
+
+### ngOnInit()
+
+Initializes both charts on component load.
+
+```typescript
+ngOnInit(): void {
+  this.SetPieChart();
+  this.SetBarChart();
+}
+```
+
+Location: `chart.component.ts:81-86`
+
+## Constructor
+
+Registers Chart.js components and sets up reactive effects for speech feedback.
+
+```typescript
+constructor(
+  public override configService: ConfigService,
+  public override backendService: BackendService,
+  public override route: ActivatedRoute, 
+  public override speechService: SpeechService, 
+  public pdfService: PdfService
+)
+```
+
+Location: `chart.component.ts:54-79`
+
+**Key initialization:**
+
+<CodeGroup>
+```typescript Register Chart.js
+Chart.register(...registerables);
+```
+
+```typescript Speech feedback effects
+effect(() => {
+  if (this.pdf_message_csv())
+    this.speechService.speakTextCustom(this.pdf_message_csv());
+});
+
+effect(() => {
+  if (this.pdf_message_xls())
+    this.speechService.speakTextCustom(this.pdf_message_xls());
+});
+```
+</CodeGroup>
+
+## Template structure
+
+The component uses Angular Material tabs to organize different chart types:
+
+```html
+<mat-tab-group>
+  <mat-tab label="[PIE CHART]">
+    <!-- Pie chart canvas and PDF export button -->
+  </mat-tab>
+  <mat-tab label="[BAR CHART]">
+    <!-- Bar chart canvas and PDF export button -->
+  </mat-tab>
+</mat-tab-group>
+```
+
+Location: `chart.component.html:18-69`
+
+<Note>
+Each tab includes:
+- Canvas element for chart rendering
+- PDF generation button
+- Status message display using signals
+</Note>
+
+## Usage example
+
+Include the component in your module:
+
+```typescript
+import { ChartComponent } from './path/to/chart/chart.component';
+
+@NgModule({
+  declarations: [ChartComponent],
+  imports: [
+    // Required imports
+    MatTabsModule,
+    // ... other imports
+  ]
+})
+```
+
+Use in template:
+
+```html
+<app-chart></app-chart>
+```
+
+## Data flow
+
+<Steps>
+  <Step title="Component initialization">
+    `ngOnInit()` calls `SetPieChart()` and `SetBarChart()`
+  </Step>
+  <Step title="Backend data fetch">
+    Observable streams fetch data from backend services
+  </Step>
+  <Step title="Chart rendering">
+    Chart.js renders visualizations on canvas elements
+  </Step>
+  <Step title="PDF export">
+    User clicks export button, triggering `GetPDF()` method
+  </Step>
+  <Step title="PDF generation">
+    html2canvas captures the chart, jsPDF creates the document
+  </Step>
+</Steps>
+
+## Related components
+
+- [File generation](/components/file-generation) - PDF, CSV, and XLS generation
+- [Speech panel](/components/speech-panel) - Voice feedback integration

@@ -1,0 +1,228 @@
+---
+title: LandingComponent
+description: Dynamic landing page component that displays nested page navigation with icons and routing
+---
+
+## Overview
+
+The `LandingComponent` creates a dynamic landing page that displays a collection of navigation icons loaded from the application configuration. It supports both standard routing and query parameter-based navigation, making it flexible for various navigation patterns in the PWA.
+
+## Component metadata
+
+<ParamField path="selector" type="string" default="app-landing">
+  Component selector used in templates
+</ParamField>
+
+<ParamField path="standalone" type="boolean" default="true">
+  This component is standalone with explicit imports
+</ParamField>
+
+<ParamField path="templateUrl" type="string" default="./landing.component.html">
+  Path to the component template
+</ParamField>
+
+<ParamField path="styleUrl" type="string" default="./landing.component.css">
+  Path to the component styles
+</ParamField>
+
+<ParamField path="imports" type="array" default="[RouterLink]">
+  Required imports: `RouterLink` for navigation functionality
+</ParamField>
+
+## Inputs
+
+<ParamField path="LandingPage" type="string" default="undefined">
+  Optional input to specify which landing page configuration to load. If not provided, defaults to `PAGE_ANGULAR_DEMO_LANDING` from the environment configuration.
+</ParamField>
+
+## Properties
+
+<ParamField path="_pages_nested" type="any[]" default="[]">
+  Array of nested page objects containing navigation data including icons, routes, and query parameters. Each page object is enhanced with a `queryParamsObj` property after parsing.
+</ParamField>
+
+## Constructor dependencies
+
+<ParamField path="configService" type="ConfigService">
+  Service for loading and accessing application configuration including page data
+</ParamField>
+
+## Methods
+
+### ngAfterViewInit()
+
+Angular lifecycle hook that triggers the landing page loading after the view is initialized.
+
+```typescript
+ngAfterViewInit(): void
+```
+
+### loadLandingPage()
+
+Loads the landing page configuration and processes nested page data.
+
+```typescript
+loadLandingPage(): void
+```
+
+**Process:**
+1. Calls `configService._loadMainPages()` to ensure configuration is loaded
+2. Retrieves page data from `_environment.mainPageListDictionary`
+3. Uses `LandingPage` input if provided, otherwise defaults to configured page name
+4. Loads `pages_nested` array from the configuration
+5. Transforms each page by parsing query parameter strings into objects
+
+### parseQueryParams()
+
+Parses query parameter strings into Angular `Params` objects for routing.
+
+```typescript
+parseQueryParams(str: string): Params
+```
+
+<ParamField path="str" type="string">
+  Query parameter string to parse (e.g., `"{key1: 'value1', key2: 'value2'}"`)
+</ParamField>
+
+**Returns:** `Params` object with parsed key-value pairs
+
+**Features:**
+- Validates input string
+- Removes curly braces, quotes, and extra whitespace
+- Splits into key-value pairs
+- Returns empty object for invalid input
+- Includes debug logging for invalid inputs
+
+**Example transformation:**
+```typescript
+// Input: "{page: 'home', id: '123'}"
+// Output: { page: 'home', id: '123' }
+```
+
+## Template structure
+
+The component template renders a centered, animated grid of navigation icons:
+
+```html
+<div align="center" class="animate">
+  @for (page of this._pages_nested; track page) {
+    <span>
+      @if (page.queryParams) {
+        <a [routerLink]="[page.routerLink]" [queryParams]="page.queryParamsObj">
+          <img [src]="[page.text]" [alt]="'Logo'" class="me-1" style="width: 45px" />
+        </a>
+      } @else {
+        <a [routerLink]="[page.url]">
+          <img [src]="[page.text]" [alt]="'Logo'" class="me-1" style="width: 45px" />
+        </a>
+      }
+    </span>
+  }
+</div>
+```
+
+**Key features:**
+- Uses Angular's `@for` control flow syntax
+- Conditionally renders links with or without query parameters
+- Each icon is 45px wide with right margin spacing
+- Centered alignment with animation class
+
+## Usage examples
+
+<Tabs>
+  <Tab title="Basic usage">
+    ```html
+    <app-landing></app-landing>
+    ```
+  </Tab>
+  <Tab title="With custom page">
+    ```html
+    <app-landing [LandingPage]="'MyCustomLandingPage'"></app-landing>
+    ```
+  </Tab>
+  <Tab title="In standalone component">
+    ```typescript
+    import { Component } from '@angular/core';
+    import { LandingComponent } from './path/to/landing.component';
+
+    @Component({
+      selector: 'app-home',
+      template: '<app-landing></app-landing>',
+      imports: [LandingComponent],
+      standalone: true
+    })
+    export class HomeComponent {}
+    ```
+  </Tab>
+</Tabs>
+
+## Page object structure
+
+Each page in `_pages_nested` contains:
+
+<ParamField path="text" type="string">
+  Image source URL for the navigation icon
+</ParamField>
+
+<ParamField path="routerLink" type="string">
+  Router link path (used when query parameters are present)
+</ParamField>
+
+<ParamField path="url" type="string">
+  Direct URL path (used when no query parameters)
+</ParamField>
+
+<ParamField path="queryParams" type="string">
+  Raw query parameter string to be parsed
+</ParamField>
+
+<ParamField path="queryParamsObj" type="Params">
+  Parsed query parameters object (added by `parseQueryParams`)
+</ParamField>
+
+## Initialization flow
+
+1. Component is instantiated with `ConfigService` injected
+2. `ngAfterViewInit()` lifecycle hook is called
+3. `loadLandingPage()` is invoked
+4. Configuration is loaded asynchronously via `configService._loadMainPages()`
+5. Page name is determined from `LandingPage` input or configuration
+6. Nested pages array is retrieved and processed
+7. Each page's query parameters are parsed and added as `queryParamsObj`
+8. Template renders navigation icons with appropriate routing
+
+## Routing strategies
+
+The component supports two routing approaches:
+
+### With query parameters
+```html
+<a [routerLink]="[page.routerLink]" [queryParams]="page.queryParamsObj">
+  <img [src]="[page.text]" ... />
+</a>
+```
+
+### Without query parameters
+```html
+<a [routerLink]="[page.url]">
+  <img [src]="[page.text]" ... />
+</a>
+```
+
+## Error handling
+
+Includes validation and warnings:
+
+```typescript
+if (pageName && typeof pageName === 'string') {
+  // Load pages
+} else {
+  console.warn(`Page data not found for key: ${pageName}`);
+}
+```
+
+## Source location
+
+- TypeScript: `~/workspace/source/src/app/_components/landing/landing.component.ts`
+- Template: `~/workspace/source/src/app/_components/landing/landing.component.html`
+- Styles: `~/workspace/source/src/app/_components/landing/landing.component.css`

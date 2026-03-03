@@ -1,80 +1,490 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Build your first Angular component and understand the application architecture
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through creating a working Angular component using the patterns and architecture from the Angular PWA Demo application. You'll learn about modern Angular features including signals, dependency injection, and service integration.
 
-### Step 1: Set up your local environment
+<Note>
+  This tutorial assumes you have completed the [installation](/installation) steps and have the development server running.
+</Note>
+
+## Create your first component
+
+Let's create a simple dashboard component that demonstrates the application's core patterns.
+
+<Steps>
+  <Step title="Generate the component">
+    Use Angular CLI to generate a new component:
+    
+    ```bash
+    ng generate component components/dashboard --standalone=false
+    ```
+    
+    This creates:
+    - `dashboard.component.ts` - Component logic
+    - `dashboard.component.html` - Template
+    - `dashboard.component.css` - Styles
+    - `dashboard.component.spec.ts` - Tests
+  </Step>
+  
+  <Step title="Implement component logic">
+    Open `dashboard.component.ts` and implement the component using Angular 21 patterns:
+    
+    ```typescript dashboard.component.ts
+    import { Component, OnInit, inject, signal } from '@angular/core';
+    import { ConfigService } from '../../_services/__Utils/ConfigService/config.service';
+    import { BackendService } from '../../_services/BackendService/backend.service';
+    
+    @Component({
+      selector: 'app-dashboard',
+      templateUrl: './dashboard.component.html',
+      styleUrls: ['./dashboard.component.css'],
+      standalone: false
+    })
+    export class DashboardComponent implements OnInit {
+      // Modern dependency injection using inject()
+      private readonly configService = inject(ConfigService);
+      private readonly backendService = inject(BackendService);
+      
+      // Reactive state using Signals (Angular 21)
+      public readonly appBrand = signal<string>('');
+      public readonly appVersion = signal<string>('');
+      public readonly isLoading = signal<boolean>(false);
+      
+      ngOnInit(): void {
+        this.loadConfiguration();
+      }
+      
+      private loadConfiguration(): void {
+        // Get configuration values
+        const brand = this.configService.getConfigValue('appBrand') ?? 'Angular PWA';
+        const version = this.configService.getConfigValue('appVersion') ?? '1.0.0';
+        
+        // Update signals
+        this.appBrand.set(brand);
+        this.appVersion.set(version);
+      }
+      
+      public refreshData(): void {
+        this.isLoading.set(true);
+        
+        // Simulate data refresh
+        setTimeout(() => {
+          this.isLoading.set(false);
+          console.log('Data refreshed');
+        }, 1000);
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Create the template">
+    Add the HTML template in `dashboard.component.html`:
+    
+    ```html dashboard.component.html
+    <div class="container mt-4">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h2>{{ appBrand() }} Dashboard</h2>
+          <small>Version: {{ appVersion() }}</small>
+        </div>
+        
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h4>Welcome</h4>
+              <p>This is a dashboard component built with Angular 21 patterns.</p>
+              
+              <h5>Key Features:</h5>
+              <ul>
+                <li>Reactive state with Signals</li>
+                <li>Modern inject() function for DI</li>
+                <li>Service integration</li>
+                <li>Bootstrap styling</li>
+              </ul>
+            </div>
+            
+            <div class="col-md-6">
+              <h4>Actions</h4>
+              <button 
+                class="btn btn-primary" 
+                (click)="refreshData()"
+                [disabled]="isLoading()">
+                @if (isLoading()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Loading...
+                } @else {
+                  Refresh Data
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    ```
+  </Step>
+  
+  <Step title="Add component styling">
+    Style your component in `dashboard.component.css`:
+    
+    ```css dashboard.component.css
+    .card {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+    
+    .card-header {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+    }
+    
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+    
+    .card-header small {
+      opacity: 0.9;
+    }
+    
+    .btn {
+      transition: all 0.3s ease;
+    }
+    
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    ```
+  </Step>
+  
+  <Step title="Register in module">
+    Add your component to the appropriate module. For example, in `app.module.ts`:
+    
+    ```typescript app.module.ts
+    import { DashboardComponent } from './components/dashboard/dashboard.component';
+    
+    @NgModule({
+      declarations: [
+        AppComponent,
+        DashboardComponent, // Add here
+        // ... other components
+      ],
+      // ... rest of module configuration
+    })
+    export class AppModule { }
+    ```
+  </Step>
+  
+  <Step title="Add routing">
+    Add a route in `app-routing.module.ts`:
+    
+    ```typescript app-routing.module.ts
+    import { DashboardComponent } from './components/dashboard/dashboard.component';
+    
+    const routes: Routes = [
+      { path: 'dashboard', component: DashboardComponent },
+      // ... other routes
+    ];
+    ```
+  </Step>
+</Steps>
+
+## Understanding the architecture
+
+### Signals for reactive state
+
+Angular 21 introduces Signals for fine-grained reactivity. Here's how they're used in the application:
+
+```typescript
+// Create a signal
+public readonly title = signal<string>('');
+
+// Update a signal
+this.title.set('New Value');
+
+// Read a signal in template
+{{ title() }}
+```
+
+From `app.component.ts:20-38`:
+
+```typescript
+// Properties using Signals
+public readonly title = signal<string>('');
+public readonly appBrand = signal<string>('');
+public readonly appVersion = signal<string>('');
+
+private initializeConfig(): void {
+  // Get configuration values
+  const brand = this._configService.getConfigValue('appBrand') ?? 'App';
+  const version = this._configService.getConfigValue('appVersion') ?? '1.0.0';
+  
+  // Update Signals
+  this.appBrand.set(brand);
+  this.appVersion.set(version);
+  this.title.set(brand);
+  
+  // Update browser tab title
+  this.titleService.setTitle(`${brand} - ${version}`);
+}
+```
+
+### Modern dependency injection
+
+Use the `inject()` function instead of constructor injection:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { ConfigService } from './services/config.service';
+
+export class MyComponent {
+  // Modern style - cleaner and more readable
+  private readonly configService = inject(ConfigService);
+  
+  // Old style (still supported)
+  // constructor(private configService: ConfigService) {}
+}
+```
+
+### Configuration service
+
+The application uses a centralized configuration service that loads settings at startup. From `config.service.ts:34-43`:
+
+```typescript
+loadConfig() {
+  return this.http.get('./assets/config/config.json').toPromise()
+    .then((data: any) => {
+      _environment.externalConfig = data;
+    })
+    .catch(error => {
+      console.error('Error loading configuration:', error);
+    });
+}
+```
+
+Access configuration values anywhere:
+
+```typescript
+const apiUrl = this.configService.getConfigValue('baseUrlNetCore');
+const appName = this.configService.getConfigValue('appBrand');
+```
+
+## Advanced patterns
+
+### HTTP interceptor
+
+The application includes a global HTTP interceptor that logs all requests. From `app.module.ts:39-60`:
+
+```typescript
+export const loggingInterceptor: HttpInterceptorFn = (
+  req: HttpRequest<unknown>, 
+  next: HttpHandlerFn
+) => {
+  const started = Date.now();
+  const backend = inject(BackendService);
+  let status: string = 'pending';
+
+  return next(req).pipe(
+    tap({
+      next: (event) => {
+        if (event instanceof HttpResponse) status = 'succeeded';
+      },
+      error: (error: HttpErrorResponse) => {
+        status = 'failed';
+        backend.SetLog(
+          "[HTTP ERROR]", 
+          `URL: ${req.url} - Status: ${error.status}`, 
+          LogType.Error
+        );
+      }
+    }),
+    finalize(() => {
+      const elapsed = Date.now() - started;
+      console.warn(`[HTTP LOG]: ${req.method} "${req.urlWithParams}" ${status} in ${elapsed} ms.`);
+    })
+  );
+};
+```
+
+### Custom error handler
+
+Global error handling captures runtime exceptions. From `app.module.ts:66-74`:
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class CustomErrorHandler implements ErrorHandler {
+  private backendService = inject(BackendService);
+
+  handleError(_error: Error): void { 
+    console.error("[RUNTIME ERROR]:\n", _error); 
+    this.backendService.SetLog(
+      "[RUNTIME ERROR]", 
+      _error.message, 
+      LogType.Error
+    );
+  }
+}
+```
+
+### Service worker registration
+
+PWA capabilities are enabled through service workers. From `app.module.ts:103-106`:
+
+```typescript
+ServiceWorkerModule.register('ngsw-worker.js', {
+  enabled: !isDevMode(),
+  registrationStrategy: 'registerWhenStable:30000'
+})
+```
+
+## Working with services
+
+### Creating a custom service
+
+Generate a new service:
+
+```bash
+ng generate service services/data/data
+```
+
+Implement the service:
+
+```typescript data.service.ts
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { ConfigService } from '../__Utils/ConfigService/config.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DataService {
+  private readonly http = inject(HttpClient);
+  private readonly config = inject(ConfigService);
+  
+  private get baseUrl(): string {
+    return this.config.getConfigValue('baseUrlNetCore') || '';
+  }
+  
+  getData(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/api/data`);
+  }
+  
+  postData(payload: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/api/data`, payload);
+  }
+}
+```
+
+## Testing your component
+
+Run the development server if not already running:
+
+```bash
+npm start
+```
+
+Navigate to `http://localhost:4200/dashboard` to see your component in action.
+
+### Run unit tests
+
+```bash
+ng test
+```
+
+The default test suite will verify your component is created successfully.
+
+## Common patterns
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+  <Accordion title="Loading states">
+    Use signals to manage loading states:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+    ```typescript
+    public readonly isLoading = signal<boolean>(false);
+    
+    async loadData() {
+      this.isLoading.set(true);
+      try {
+        const data = await this.dataService.getData();
+        // Process data
+      } finally {
+        this.isLoading.set(false);
+      }
+    }
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+  
+  <Accordion title="Form handling">
+    Use reactive forms with signals:
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+    ```typescript
+    import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+    
+    export class MyComponent {
+      private fb = inject(FormBuilder);
+      public readonly formSubmitted = signal<boolean>(false);
+      
+      form: FormGroup = this.fb.group({
+        name: ['', Validators.required],
+        email: ['', [Validators.required, Validators.email]]
+      });
+      
+      onSubmit() {
+        if (this.form.valid) {
+          this.formSubmitted.set(true);
+          // Process form
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Routing with parameters">
+    Access route parameters:
+    
+    ```typescript
+    import { ActivatedRoute } from '@angular/router';
+    
+    export class DetailComponent {
+      private route = inject(ActivatedRoute);
+      public readonly itemId = signal<string>('');
+      
+      ngOnInit() {
+        this.route.params.subscribe(params => {
+          this.itemId.set(params['id']);
+        });
+      }
+    }
+    ```
   </Accordion>
 </AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Explore demo modules" icon="grid">
+    Check out the algorithm, game, and file generation demos in the application
+  </Card>
+  
+  <Card title="Add Material components" icon="palette">
+    Integrate Angular Material components for rich UI elements
+  </Card>
+  
+  <Card title="Build a feature module" icon="cube">
+    Create a complete feature module with routing and lazy loading
+  </Card>
+  
+  <Card title="Deploy as PWA" icon="cloud">
+    Build and deploy your application with offline capabilities
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  All code examples in this guide are based on real patterns from the Angular PWA Demo source code. The application follows Angular 21 best practices including standalone components support, signals, and modern dependency injection.
 </Note>

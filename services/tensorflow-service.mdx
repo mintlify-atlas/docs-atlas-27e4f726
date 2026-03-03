@@ -1,0 +1,449 @@
+---
+title: TensorFlow service
+description: Angular service for machine learning predictions using TensorFlow with Python and C++ backends
+---
+
+The `TensorFlowService` provides machine learning capabilities for predicting mission durations using linear regression models. It supports both TensorFlow (Python backend) and native C++ implementations.
+
+## Overview
+
+This service extends `BaseService` and uses:
+- **TensorFlow** via Django/Python backend for ML predictions
+- **C++ linear regression** via .NET Core API as alternative
+- **RxJS Observables** for async operations
+- **Type-safe interfaces** for requests and responses
+
+<Warning>
+  The service requires backend APIs to be configured in the `ConfigService` with keys `baseUrlDjangoPythonTF` and `baseUrlNetCoreCPPEntry`.
+</Warning>
+
+## Installation
+
+The service is provided at root level:
+
+```typescript
+import { TensorFlowService } from '@services/__AI/TensorflowService/tensor-flow.service';
+import { inject } from '@angular/core';
+
+export class MyComponent {
+  private tfService = inject(TensorFlowService);
+}
+```
+
+## Interfaces
+
+### PredictionRequest
+
+Request payload for prediction endpoints:
+
+```typescript
+export interface PredictionRequest {
+  mission_number: number;
+}
+```
+
+<ParamField path="mission_number" type="number" required>
+  The mission number to predict duration for
+</ParamField>
+
+### PredictionResponse
+
+Response from prediction endpoints:
+
+```typescript
+export interface PredictionResponse {
+  input_mission_number: number;
+  predicted_total_time_hours: number;
+  predicted_duration_days: number;
+}
+```
+
+<ParamField path="input_mission_number" type="number">
+  Echo of the input mission number
+</ParamField>
+
+<ParamField path="predicted_total_time_hours" type="number">
+  Predicted total mission time in hours
+</ParamField>
+
+<ParamField path="predicted_duration_days" type="number">
+  Predicted mission duration in days
+</ParamField>
+
+## Methods
+
+### Prediction methods
+
+#### predictTime_tensorflow_python()
+
+Predicts mission duration using TensorFlow on a Python/Django backend.
+
+```typescript
+predictTime_tensorflow_python(missionNumber: number): Observable<PredictionResponse>
+```
+
+<ParamField path="missionNumber" type="number" required>
+  The mission number to predict duration for (e.g., 1-100)
+</ParamField>
+
+**Returns:** Observable emitting `PredictionResponse` with predicted hours and days
+
+**Example:**
+
+```typescript
+const tfService = inject(TensorFlowService);
+const missionNumber = 42;
+
+tfService.predictTime_tensorflow_python(missionNumber).subscribe({
+  next: (prediction) => {
+    console.log('Mission:', prediction.input_mission_number);
+    console.log('Predicted hours:', prediction.predicted_total_time_hours);
+    console.log('Predicted days:', prediction.predicted_duration_days);
+  },
+  error: (err) => console.error('Prediction failed:', err)
+});
+```
+
+#### predictTime_netcore_cpp()
+
+Predicts mission duration using native C++ linear regression on .NET Core backend.
+
+```typescript
+predictTime_netcore_cpp(missionNumber: number): Observable<PredictionResponse>
+```
+
+<ParamField path="missionNumber" type="number" required>
+  The mission number to predict duration for
+</ParamField>
+
+**Returns:** Observable emitting `PredictionResponse` with predicted hours and days
+
+**Example:**
+
+```typescript
+const tfService = inject(TensorFlowService);
+const missionNumber = 42;
+
+tfService.predictTime_netcore_cpp(missionNumber).subscribe({
+  next: (prediction) => {
+    console.log('C++ Prediction:');
+    console.log('Hours:', prediction.predicted_total_time_hours);
+    console.log('Days:', prediction.predicted_duration_days);
+  },
+  error: (err) => console.error('Prediction failed:', err)
+});
+```
+
+### Version information methods
+
+Retrieve version information from the TensorFlow backend.
+
+#### _GetTensorFlowAPIVersion()
+
+Returns the TensorFlow API version from the backend.
+
+```typescript
+_GetTensorFlowAPIVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the API version string
+
+**Example:**
+
+```typescript
+tfService._GetTensorFlowAPIVersion().subscribe(version => {
+  console.log('TensorFlow API Version:', version);
+});
+```
+
+#### _GetTensorFlowAPPVersion()
+
+Returns the TensorFlow application version from the backend.
+
+```typescript
+_GetTensorFlowAPPVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the application version string
+
+**Example:**
+
+```typescript
+tfService._GetTensorFlowAPPVersion().subscribe(version => {
+  console.log('TensorFlow App Version:', version);
+});
+```
+
+#### _TensorFlow_GetCPPSTDVersion()
+
+Returns the C++ standard library version used by the backend.
+
+```typescript
+_TensorFlow_GetCPPSTDVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the C++ STD version string
+
+**Example:**
+
+```typescript
+tfService._TensorFlow_GetCPPSTDVersion().subscribe(version => {
+  console.log('C++ STD Version:', version);
+});
+```
+
+## Complete prediction example
+
+Here's a complete component that compares predictions from both backends:
+
+```typescript
+import { Component, inject, signal } from '@angular/core';
+import { TensorFlowService, PredictionResponse } from '@services/__AI/TensorflowService/tensor-flow.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+
+@Component({
+  selector: 'app-mission-predictor',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div>
+      <h2>Mission Duration Predictor</h2>
+      
+      <label>
+        Mission Number:
+        <input type="number" [(ngModel)]="missionNumber" min="1" />
+      </label>
+      
+      <button (click)="predictWithBoth()" [disabled]="loading()">Predict with Both</button>
+      <button (click)="predictWithPython()" [disabled]="loading()">Python Only</button>
+      <button (click)="predictWithCpp()" [disabled]="loading()">C++ Only</button>
+      
+      @if (loading()) {
+        <p>Calculating predictions...</p>
+      }
+      
+      @if (pythonPrediction()) {
+        <div class="prediction-card">
+          <h3>TensorFlow (Python) Prediction</h3>
+          <p>Mission: {{ pythonPrediction()!.input_mission_number }}</p>
+          <p>Hours: {{ pythonPrediction()!.predicted_total_time_hours.toFixed(2) }}</p>
+          <p>Days: {{ pythonPrediction()!.predicted_duration_days.toFixed(2) }}</p>
+        </div>
+      }
+      
+      @if (cppPrediction()) {
+        <div class="prediction-card">
+          <h3>C++ Linear Regression Prediction</h3>
+          <p>Mission: {{ cppPrediction()!.input_mission_number }}</p>
+          <p>Hours: {{ cppPrediction()!.predicted_total_time_hours.toFixed(2) }}</p>
+          <p>Days: {{ cppPrediction()!.predicted_duration_days.toFixed(2) }}</p>
+        </div>
+      }
+      
+      @if (pythonPrediction() && cppPrediction()) {
+        <div class="comparison">
+          <h3>Comparison</h3>
+          <p>Hour difference: {{ hourDifference().toFixed(2) }}</p>
+          <p>Day difference: {{ dayDifference().toFixed(2) }}</p>
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    .prediction-card {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+    .comparison {
+      background: #f0f0f0;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+    }
+  `]
+})
+export class MissionPredictorComponent {
+  private tfService = inject(TensorFlowService);
+  
+  missionNumber = 1;
+  loading = signal(false);
+  pythonPrediction = signal<PredictionResponse | null>(null);
+  cppPrediction = signal<PredictionResponse | null>(null);
+  
+  hourDifference = signal(0);
+  dayDifference = signal(0);
+
+  predictWithBoth(): void {
+    this.loading.set(true);
+    
+    forkJoin({
+      python: this.tfService.predictTime_tensorflow_python(this.missionNumber),
+      cpp: this.tfService.predictTime_netcore_cpp(this.missionNumber)
+    }).subscribe({
+      next: (results) => {
+        this.pythonPrediction.set(results.python);
+        this.cppPrediction.set(results.cpp);
+        this.calculateDifferences();
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Prediction failed:', err);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  predictWithPython(): void {
+    this.loading.set(true);
+    this.cppPrediction.set(null);
+    
+    this.tfService.predictTime_tensorflow_python(this.missionNumber).subscribe({
+      next: (prediction) => {
+        this.pythonPrediction.set(prediction);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Python prediction failed:', err);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  predictWithCpp(): void {
+    this.loading.set(true);
+    this.pythonPrediction.set(null);
+    
+    this.tfService.predictTime_netcore_cpp(this.missionNumber).subscribe({
+      next: (prediction) => {
+        this.cppPrediction.set(prediction);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('C++ prediction failed:', err);
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private calculateDifferences(): void {
+    const python = this.pythonPrediction();
+    const cpp = this.cppPrediction();
+    
+    if (python && cpp) {
+      this.hourDifference.set(
+        Math.abs(python.predicted_total_time_hours - cpp.predicted_total_time_hours)
+      );
+      this.dayDifference.set(
+        Math.abs(python.predicted_duration_days - cpp.predicted_duration_days)
+      );
+    }
+  }
+}
+```
+
+## Using with signals and rxResource
+
+Modern Angular v21+ signal integration:
+
+```typescript
+import { Component, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { TensorFlowService } from '@services/__AI/TensorflowService/tensor-flow.service';
+
+@Component({
+  selector: 'app-mission-info',
+  standalone: true,
+  template: `
+    <div>
+      <h3>Backend Information</h3>
+      
+      @if (versions.isLoading()) {
+        <p>Loading versions...</p>
+      }
+      
+      @if (versions.value(); as v) {
+        <ul>
+          <li>API Version: {{ v.api }}</li>
+          <li>App Version: {{ v.app }}</li>
+          <li>C++ STD: {{ v.cppStd }}</li>
+        </ul>
+      }
+      
+      @if (versions.error()) {
+        <p>Failed to load versions</p>
+      }
+    </div>
+  `
+})
+export class MissionInfoComponent {
+  private tfService = inject(TensorFlowService);
+  
+  versions = rxResource({
+    loader: () => {
+      return forkJoin({
+        api: this.tfService._GetTensorFlowAPIVersion(),
+        app: this.tfService._GetTensorFlowAPPVersion(),
+        cppStd: this.tfService._TensorFlow_GetCPPSTDVersion()
+      });
+    }
+  });
+}
+```
+
+## Backend configuration
+
+Ensure your `environment.ts` or configuration includes:
+
+```typescript
+export const environment = {
+  externalConfig: {
+    baseUrlDjangoPythonTF: 'https://your-python-backend.com/',
+    baseUrlNetCoreCPPEntry: 'https://your-cpp-backend.com/'
+  }
+};
+```
+
+## API endpoints
+
+### Python/Django backend
+
+- **POST** `/predict/` - Predict mission duration with TensorFlow
+  - Body: `{ "mission_number": number }`
+  - Response: `PredictionResponse`
+
+### .NET Core/C++ backend
+
+- **GET** `/api/linearregression/predict?missionNumberToPredict={number}` - Predict with C++ linear regression
+- **GET** `/api/Tensorflow/GetAPIVersion` - Get API version
+- **GET** `/api/Tensorflow/GetAPPVersion` - Get app version
+- **GET** `/api/Tensorflow/GetCPPSTDVersion` - Get C++ STD version
+
+## Error handling
+
+Always handle errors in predictions:
+
+```typescript
+tfService.predictTime_tensorflow_python(42).subscribe({
+  next: (prediction) => {
+    // Handle successful prediction
+  },
+  error: (err) => {
+    if (err.status === 404) {
+      console.error('Prediction endpoint not found');
+    } else if (err.status === 500) {
+      console.error('Server error during prediction');
+    } else {
+      console.error('Prediction failed:', err.message);
+    }
+  }
+});
+```
+
+## Related services
+
+- [OCR service](/services/ocr-service) - Text extraction from images
+- [Computer vision service](/services/computer-vision-service) - OpenCV-based image processing

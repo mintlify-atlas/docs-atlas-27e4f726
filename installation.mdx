@@ -1,0 +1,282 @@
+---
+title: Installation
+description: Set up your development environment and install the Angular PWA Demo application
+---
+
+## Prerequisites
+
+Before installing the Angular PWA Demo application, ensure you have the following installed on your system:
+
+<AccordionGroup>
+  <Accordion title="Node.js and npm">
+    Node.js version 18.x or higher is required. You can verify your installation:
+    
+    ```bash
+    node --version
+    npm --version
+    ```
+    
+    Download from [nodejs.org](https://nodejs.org/) if not installed.
+  </Accordion>
+  
+  <Accordion title="Angular CLI">
+    Angular CLI version 21.1.3 or higher is recommended:
+    
+    ```bash
+    npm install -g @angular/cli@latest
+    ng version
+    ```
+  </Accordion>
+  
+  <Accordion title="Git (optional)">
+    Required if cloning from a repository:
+    
+    ```bash
+    git --version
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Installation steps
+
+<Steps>
+  <Step title="Clone or download the project">
+    If using Git, clone the repository:
+    
+    ```bash
+    git clone <repository-url>
+    cd PWA_DEMO_ENV_PROD
+    ```
+    
+    Alternatively, download and extract the source code to your desired directory.
+  </Step>
+  
+  <Step title="Install dependencies">
+    Install all required npm packages:
+    
+    ```bash
+    npm install
+    ```
+    
+    This will install all dependencies from package.json, including:
+    
+    - Angular 21.1.3 (core, common, forms, router, PWA, service worker)
+    - Angular Material 21.1.3
+    - Bootstrap 5.3.2 and ng-bootstrap 20.0.0
+    - Three.js 0.172.0 for 3D graphics
+    - Chart.js 3.9.1 and ng2-charts 3.1.2
+    - Socket.io 4.7.4 for real-time features
+    - Additional utilities (jsPDF, html2canvas, MathJS)
+  </Step>
+  
+  <Step title="Verify installation">
+    Check that everything is installed correctly:
+    
+    ```bash
+    ng version
+    ```
+    
+    You should see Angular CLI and Angular version information.
+  </Step>
+</Steps>
+
+## Development server
+
+Start the development server to run the application locally:
+
+<CodeGroup>
+
+```bash npm
+npm start
+```
+
+```bash ng
+ng serve --disable-host-check
+```
+
+</CodeGroup>
+
+The application will be available at `http://localhost:4200/`. The app will automatically reload when you make changes to source files.
+
+<Note>
+  The `--disable-host-check` flag is used in the start script for development flexibility. Remove this flag in production environments.
+</Note>
+
+## Build for production
+
+Create an optimized production build:
+
+<CodeGroup>
+
+```bash Standard build
+ng build
+```
+
+```bash Production build
+ng build --configuration=production
+```
+
+```bash Custom base href
+ng build --configuration=production --base-href="/PWA_DEMO_ENV_PROD/"
+```
+
+</CodeGroup>
+
+The build artifacts will be stored in the `dist/PWA_DEMO_ENV_PROD/` directory.
+
+### Build configuration
+
+The production build includes optimizations defined in `angular.json`:
+
+- **Output hashing**: All files include content hashes for cache busting
+- **Service worker**: Automatically registered for offline support
+- **Budget limits**: 
+  - Initial bundle: 25MB maximum
+  - Component styles: 5MB maximum
+
+## Running tests
+
+Execute unit tests via Karma:
+
+```bash
+ng test
+```
+
+The test runner will launch in your default browser and watch for file changes.
+
+## Project structure
+
+After installation, your project structure will look like this:
+
+```
+PWA_DEMO_ENV_PROD/
+├── src/
+│   ├── app/
+│   │   ├── _components/      # Reusable components
+│   │   ├── _directives/      # Custom directives
+│   │   ├── _models/          # TypeScript models and entities
+│   │   ├── _modules/         # Feature modules
+│   │   │   ├── _Demos/       # Demo modules (games, algorithms, etc.)
+│   │   │   ├── about/        # About section
+│   │   │   ├── home/         # Home components
+│   │   │   └── shared/       # Shared module
+│   │   ├── _services/        # Injectable services
+│   │   │   ├── __AI/         # AI/ML services
+│   │   │   ├── __Games/      # Game logic services
+│   │   │   ├── __Utils/      # Utility services
+│   │   │   ├── AlgorithmService/
+│   │   │   └── BackendService/
+│   │   ├── app.component.ts  # Root component
+│   │   ├── app.module.ts     # Root module
+│   │   └── app-routing.module.ts
+│   ├── assets/
+│   │   ├── config/           # Configuration JSON files
+│   │   └── icons/            # PWA icons
+│   ├── manifest.webmanifest  # PWA manifest
+│   └── index.html
+├── angular.json              # Angular workspace configuration
+├── package.json              # Dependencies and scripts
+├── tsconfig.json             # TypeScript configuration
+└── ngsw-config.json          # Service worker configuration
+```
+
+## Configuration files
+
+### package.json dependencies
+
+The application uses these key dependencies:
+
+```json
+{
+  "dependencies": {
+    "@angular/animations": "^21.1.3",
+    "@angular/common": "^21.1.3",
+    "@angular/core": "^21.1.3",
+    "@angular/forms": "^21.1.3",
+    "@angular/material": "^21.1.3",
+    "@angular/pwa": "^21.1.3",
+    "@angular/router": "^21.1.3",
+    "@angular/service-worker": "^21.1.3",
+    "bootstrap": "^5.3.2",
+    "chart.js": "^3.9.1",
+    "three": "^0.172.0",
+    "socket.io-client": "^4.8.1"
+  }
+}
+```
+
+### Web manifest configuration
+
+The PWA manifest (`src/manifest.webmanifest`) defines the app identity:
+
+```json
+{
+  "name": "AngularDijkstra",
+  "short_name": "AngularDijkstra",
+  "theme_color": "#1976d2",
+  "background_color": "#fafafa",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
+```
+
+## Common issues
+
+<AccordionGroup>
+  <Accordion title="Port already in use">
+    If port 4200 is already in use, specify a different port:
+    
+    ```bash
+    ng serve --port 4300
+    ```
+  </Accordion>
+  
+  <Accordion title="Node version mismatch">
+    Ensure you're using Node.js 18.x or higher:
+    
+    ```bash
+    node --version
+    ```
+    
+    Use [nvm](https://github.com/nvm-sh/nvm) to manage multiple Node versions.
+  </Accordion>
+  
+  <Accordion title="Dependency installation fails">
+    Clear npm cache and reinstall:
+    
+    ```bash
+    npm cache clean --force
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  
+  <Accordion title="Service worker not registering">
+    Service workers only work in production mode or over HTTPS. Build and serve the production bundle:
+    
+    ```bash
+    ng build --configuration=production
+    npx http-server dist/PWA_DEMO_ENV_PROD/browser -p 8080
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+Now that you have the application installed, proceed to the [quick start guide](/quickstart) to create your first component and understand the application architecture.
+
+<Card
+  title="Quick start guide"
+  icon="rocket"
+  href="/quickstart"
+>
+  Learn how to build your first Angular component and integrate it with the application
+</Card>

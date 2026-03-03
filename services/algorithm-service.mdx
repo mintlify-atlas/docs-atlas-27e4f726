@@ -1,0 +1,347 @@
+---
+title: AlgorithmService
+description: Core service for executing various algorithms including sorting, pathfinding, and regex operations across multiple backend implementations
+---
+
+## Overview
+
+The `AlgorithmService` is a foundational service in the Angular PWA Demo that provides access to various algorithm implementations. It extends `BaseService` and communicates with multiple backend APIs (.NET Core, C++, Spring Boot) to execute algorithms for sorting, Dijkstra's shortest path, and regular expression evaluation.
+
+## Service configuration
+
+<CodeGroup>
+```typescript Traditional constructor injection
+import { AlgorithmService } from 'src/app/_services/AlgorithmService/algorithm.service';
+
+@Component({
+  selector: 'app-algorithm-sort',
+  templateUrl: './algorithm-sort.component.html',
+  standalone: false
+})
+export class AlgorithmSortComponent {
+  constructor(public algorithmService: AlgorithmService) {}
+}
+```
+
+```typescript Angular 21 inject() function
+import { inject } from '@angular/core';
+import { AlgorithmService } from './_services/AlgorithmService/algorithm.service';
+
+export class AppComponent {
+  private readonly algorithmService = inject(AlgorithmService);
+}
+```
+</CodeGroup>
+
+<Note>
+The `AlgorithmService` is registered with `providedIn: 'root'`, making it a singleton service available throughout the application without needing to add it to any module's providers array.
+</Note>
+
+## Dependencies
+
+The service requires the following dependencies:
+
+<ParamField path="HttpClient" type="HttpClient" required>
+  Angular's HTTP client for making API requests
+</ParamField>
+
+<ParamField path="ConfigService" type="ConfigService" required>
+  Configuration service that provides base URLs for different backend APIs
+</ParamField>
+
+## Common methods
+
+### _Algorithm_GetAppVersion
+
+Retrieves the application version from the C++ backend API.
+
+```typescript
+_Algorithm_GetAppVersion(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the application version.
+
+**Usage example:**
+
+```typescript
+this.algorithmService._Algorithm_GetAppVersion()
+  .subscribe({
+    next: (version) => console.log('App version:', version),
+    error: (err) => console.error('Error fetching version:', err)
+  });
+```
+
+### _Algorithm_GetCPPSTDVersion
+
+Retrieves the C++ standard version used by the backend.
+
+```typescript
+_Algorithm_GetCPPSTDVersion(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the C++ standard version.
+
+## Shortest path algorithms
+
+### getRandomVertex
+
+Generates a random vertex graph for Dijkstra's algorithm using the .NET Core backend.
+
+```typescript
+getRandomVertex(vertexSize: Number, sourcePoint: Number): Observable<string>
+```
+
+<ParamField path="vertexSize" type="Number" required>
+  The number of vertices in the graph
+</ParamField>
+
+<ParamField path="sourcePoint" type="Number" required>
+  The starting point for the algorithm
+</ParamField>
+
+**Returns:** An `Observable<string>` containing the graph data.
+
+### getRandomVertexCpp
+
+Generates a random vertex graph using the C++ backend implementation.
+
+```typescript
+getRandomVertexCpp(vertexSize: Number, sourcePoint: Number): Observable<string>
+```
+
+**Parameters:** Same as `getRandomVertex`
+
+### getRandomVertexSpringBoot
+
+Generates a random vertex graph using the Spring Boot (Java) backend implementation.
+
+```typescript
+getRandomVertexSpringBoot(vertexSize: Number, sourcePoint: Number): Observable<string>
+```
+
+**Parameters:** Same as `getRandomVertex`
+
+## Sorting algorithms
+
+### SortBenchMark_getNewSort_C_Sharp
+
+Generates a new unsorted list for sorting demonstrations using the C# backend.
+
+```typescript
+SortBenchMark_getNewSort_C_Sharp(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the unsorted list.
+
+**Usage example:**
+
+```typescript
+public GetNewSort(): void {
+  this.algorithmService.SortBenchMark_getNewSort_C_Sharp()
+    .subscribe({
+      next: (sortInfo: string) => {
+        console.info('New unsorted list:', sortInfo);
+        this.mensajes.nativeElement.innerHTML = sortInfo;
+      },
+      error: (err) => {
+        console.error('Error getting new sort:', err.message);
+      }
+    });
+}
+```
+
+### SortBenchMark_getSort_C_Sharp
+
+Executes a sorting algorithm on a given list using the C# backend.
+
+```typescript
+SortBenchMark_getSort_C_Sharp(p_sortAlgoritm: number, p_unsortedList: string): Observable<string>
+```
+
+<ParamField path="p_sortAlgoritm" type="number" required>
+  The sorting algorithm identifier (1 = Bubble Sort, 2 = Quick Sort, etc.)
+</ParamField>
+
+<ParamField path="p_unsortedList" type="string" required>
+  The unsorted list as a delimited string
+</ParamField>
+
+**Returns:** An `Observable<string>` containing the sorting steps and final sorted list.
+
+**Real-world usage:**
+
+```typescript
+public GetSort() {
+  let p_sortAlgorith: number = this.SortAlgorithmList.nativeElement.value;
+  let p_unsortedList: string = this.mensajes.nativeElement.innerHTML;
+  
+  let GetSortInfo: Observable<string>;
+  
+  // Select backend based on language preference
+  switch(this._progLangId) {
+    case 1: // C#
+      GetSortInfo = this.algorithmService.SortBenchMark_getSort_C_Sharp(
+        p_sortAlgorith, 
+        p_unsortedList
+      );
+      break;
+    case 2: // C++
+      GetSortInfo = this.algorithmService.getSort_CPP(
+        p_sortAlgorith, 
+        p_unsortedList
+      );
+      break;
+  }
+  
+  GetSortInfo.subscribe({
+    next: (data: string) => {
+      this.stringMatrix = data.split("■");
+      this.DrawStepMain();
+    },
+    error: (err: Error) => {
+      console.error('Error during sort:', err.message);
+      this.status_message.set("An error occurred");
+    }
+  });
+}
+```
+
+### getSort_CPP
+
+Executes a sorting algorithm using the C++ backend implementation.
+
+```typescript
+getSort_CPP(p_sortAlgoritm: number, p_unsortedList: string): Observable<string>
+```
+
+**Parameters:** Same as `SortBenchMark_getSort_C_Sharp`
+
+## Regular expression methods
+
+### _GetXmlData
+
+Retrieves XML data containing regex patterns from the backend.
+
+```typescript
+_GetXmlData(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing XML data with regex patterns.
+
+### _SetXmlDataToCache
+
+Caches XML regex data on the backend server.
+
+```typescript
+_SetXmlDataToCache(_prefix: string | undefined): void
+```
+
+<ParamField path="_prefix" type="string | undefined" required>
+  The base URL prefix for the API endpoint
+</ParamField>
+
+**Usage example:**
+
+```typescript
+private setupCache(): void {
+  const baseUrl = this._configService.getConfigValue('baseUrlNetCore');
+  
+  if (baseUrl) {
+    this.algorithmService._SetXmlDataToCache(baseUrl);
+  }
+}
+```
+
+### _RegExEval
+
+Evaluates a regular expression against input text using the C# backend.
+
+```typescript
+_RegExEval(tagSearchIndex: number, textSearchValue: string): Observable<string>
+```
+
+<ParamField path="tagSearchIndex" type="number" required>
+  The index of the regex pattern to use
+</ParamField>
+
+<ParamField path="textSearchValue" type="string" required>
+  The text to evaluate against the regex pattern
+</ParamField>
+
+**Returns:** An `Observable<string>` containing the regex evaluation result.
+
+### _RegExEval_CPP
+
+Evaluates a regular expression using the C++ backend implementation.
+
+```typescript
+_RegExEval_CPP(tagSearchIndex: number, textSearchValue: string): Observable<string>
+```
+
+**Parameters:** Same as `_RegExEval`
+
+## Inheritance
+
+The `AlgorithmService` extends `BaseService`, which provides common HTTP options:
+
+<Tabs>
+  <Tab title="HTTPOptions_Text">
+    Used for text responses with `Accept: application/text` header.
+    ```typescript
+    public HTTPOptions_Text = {
+      headers: new HttpHeaders({
+        'Accept':'application/text'
+      }),
+      'responseType': 'text' as 'json'
+    };
+    ```
+  </Tab>
+  <Tab title="HTTPOptions_Text_Plain">
+    Used for plain text responses without custom headers.
+    ```typescript
+    public HTTPOptions_Text_Plain = {
+      headers: new HttpHeaders(),
+      'responseType': 'text' as 'json'
+    };
+    ```
+  </Tab>
+  <Tab title="HTTPOptions_JSON">
+    Used for JSON responses with `Content-Type: application/json` header.
+    ```typescript
+    public HTTPOptions_JSON = {
+      headers: new HttpHeaders({
+        'Content-Type': 'application/json'
+      }),
+      'responseType': 'text' as 'json'
+    };
+    ```
+  </Tab>
+</Tabs>
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Error handling" icon="triangle-exclamation">
+    Always implement error handlers in your subscriptions to gracefully handle API failures.
+  </Card>
+  <Card title="Unsubscribe" icon="xmark">
+    Use operators like `takeUntilDestroyed()` to automatically unsubscribe when components are destroyed.
+  </Card>
+  <Card title="Backend selection" icon="server">
+    Allow users to choose between different backend implementations (C#, C++, Java) for performance comparisons.
+  </Card>
+  <Card title="Status updates" icon="spinner">
+    Update UI status messages during long-running algorithm operations.
+  </Card>
+</CardGroup>
+
+## Related services
+
+- [ConfigService](/services/config-service) - Provides configuration values and base URLs
+- [BackendService](/services/backend-service) - Handles general backend operations and logging
+
+## Source location
+
+```
+~/workspace/source/src/app/_services/AlgorithmService/algorithm.service.ts
+```

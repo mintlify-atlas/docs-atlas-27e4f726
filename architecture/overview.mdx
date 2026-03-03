@@ -1,0 +1,245 @@
+---
+title: Architecture overview
+description: Understanding the Angular PWA Demo application architecture
+---
+
+The Angular PWA Demo is a modern Progressive Web Application built with Angular 21, showcasing enterprise-level architecture patterns and best practices.
+
+## Core architecture principles
+
+This application follows a modular, service-oriented architecture designed for scalability, maintainability, and optimal performance.
+
+<CardGroup cols={2}>
+  <Card title="Module-based structure" icon="cubes">
+    Organized into feature modules for better code organization and lazy loading
+  </Card>
+  <Card title="Service layer pattern" icon="layer-group">
+    Centralized business logic in injectable services with dependency injection
+  </Card>
+  <Card title="Progressive enhancement" icon="mobile">
+    PWA capabilities with offline support and installability
+  </Card>
+  <Card title="Modern Angular features" icon="angular">
+    Leverages Angular 21 features including signals, functional injection, and standalone components
+  </Card>
+</CardGroup>
+
+## Application layers
+
+<Tabs>
+  <Tab title="Presentation layer">
+    ### Components and modules
+
+    The presentation layer consists of organized feature modules:
+
+    - **Home module**: Landing pages and navigation
+    - **About module**: Application information and specs
+    - **Demos module**: Feature demonstrations organized by category
+      - Algorithm demonstrations
+      - File generation features
+      - Games and interactive demos
+      - Machine learning examples
+      - Miscellaneous features
+
+    Components use modern Angular patterns:
+
+    ```typescript
+    @Component({
+      selector: 'app-root',
+      templateUrl: './app.component.html',
+      styleUrls: ['./app.component.css'],
+      standalone: false
+    })
+    export class AppComponent implements OnInit {
+      // Modern dependency injection
+      private readonly _configService = inject(ConfigService);
+      private readonly backendService = inject(BackendService);
+
+      // Reactive state with Signals
+      public readonly title = signal<string>('');
+      public readonly appBrand = signal<string>('');
+      public readonly appVersion = signal<string>('');
+    }
+    ```
+  </Tab>
+
+  <Tab title="Service layer">
+    ### Business logic and data access
+
+    Services are organized into functional categories:
+
+    - **Utils services**: Configuration, search, speech, caching
+    - **Backend services**: API communication and HTTP operations
+    - **Feature services**: Algorithm, games, file generation
+    - **AI services**: OCR, computer vision, TensorFlow integration
+
+    All services follow the dependency injection pattern:
+
+    ```typescript
+    @Injectable({
+      providedIn: 'root'
+    })
+    export class BackendService extends BaseService {
+      // Functional injection (Angular 21)
+      public readonly http = inject(HttpClient);
+      public readonly _configService = inject(ConfigService);
+      private readonly destroyRef = inject(DestroyRef);
+    }
+    ```
+  </Tab>
+
+  <Tab title="Infrastructure layer">
+    ### Core infrastructure
+
+    The infrastructure layer provides:
+
+    **Service Worker**: Handles caching and offline functionality
+    ```typescript
+    ServiceWorkerModule.register('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000'
+    })
+    ```
+
+    **HTTP Interceptor**: Global request/response handling
+    ```typescript
+    export const loggingInterceptor: HttpInterceptorFn = 
+      (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
+        return next(req).pipe(
+          tap({ /* logging logic */ }),
+          finalize(() => { /* cleanup */ })
+        );
+      };
+    ```
+
+    **Error Handler**: Centralized error management
+    ```typescript
+    @Injectable({ providedIn: 'root' })
+    export class CustomErrorHandler implements ErrorHandler {
+      handleError(_error: Error): void {
+        this.backendService.SetLog(
+          "[RUNTIME ERROR]", 
+          _error.message, 
+          LogType.Error
+        );
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Configuration layer">
+    ### Application configuration
+
+    Configuration is loaded at application startup:
+
+    ```typescript
+    provideAppInitializer(() => {
+      const configService = inject(ConfigService);
+      return configService.loadConfig();
+    })
+    ```
+
+    The `ConfigService` loads external configuration from JSON files:
+
+    - `config.json`: API endpoints and environment settings
+    - `mainPages.json`: Page metadata and routing information
+
+    This allows for environment-specific configuration without rebuilding the application.
+  </Tab>
+</Tabs>
+
+## Dependency injection pattern
+
+The application uses Angular's modern dependency injection with functional injection syntax:
+
+<CodeGroup>
+```typescript app.component.ts:14-18
+// Inyección de servicios (v21 Style)
+private readonly _configService   = inject(ConfigService);
+private readonly backendService   = inject(BackendService);
+private readonly titleService     = inject(Title);
+private readonly algorithmService = inject(AlgorithmService);
+```
+
+```typescript backend.service.ts:26-34
+// v21: Inyección funcional (Reemplaza al constructor)
+public readonly http           = inject(HttpClient);
+public readonly _configService = inject(ConfigService);
+
+/**
+ * v21 Feature: DestroyRef. 
+ * Inyectarlo aquí captura el 'Injection Context' necesario para takeUntilDestroyed.
+ */
+private readonly destroyRef = inject(DestroyRef);
+```
+</CodeGroup>
+
+<Note>
+  The `inject()` function is the modern Angular 21+ approach for dependency injection, replacing constructor-based injection for cleaner and more flexible code.
+</Note>
+
+## Module structure
+
+The application is organized into focused feature modules:
+
+```typescript app.module.ts:87-106
+imports: [
+  BrowserModule,
+  BrowserAnimationsModule,
+  CommonModule,
+  NgbModule,
+  FormsModule,
+  ReactiveFormsModule,
+  AppRoutingModule,
+  SharedModule,
+  FileGenerationModule,
+  GamesModule,
+  AlgorithmModule,
+  MiscelaneousModule,
+  AboutModule,
+  SpeechPanelComponent,  // Standalone
+  BaseSortableHeader,    // Standalone
+  ServiceWorkerModule.register('ngsw-worker.js', {
+    enabled: !isDevMode(),
+    registrationStrategy: 'registerWhenStable:30000'
+  })
+]
+```
+
+<Info>
+  The application supports both traditional module-based components and standalone components, demonstrating Angular's flexibility in architectural approaches.
+</Info>
+
+## State management
+
+The application uses Angular Signals for reactive state management:
+
+```typescript app.component.ts:20-23
+// Propiedades reactivas usando Signals
+public readonly title      = signal<string>('');
+public readonly appBrand   = signal<string>('');
+public readonly appVersion = signal<string>('');
+```
+
+Signals provide:
+- Fine-grained reactivity
+- Automatic change detection optimization
+- Type-safe reactive state
+- Better performance than traditional observables for simple state
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="PWA features" href="/architecture/pwa-features" icon="mobile">
+    Learn about Progressive Web App capabilities
+  </Card>
+  <Card title="Routing system" href="/architecture/routing" icon="route">
+    Explore the routing configuration and navigation
+  </Card>
+  <Card title="Service architecture" href="/architecture/services" icon="server">
+    Deep dive into the service layer pattern
+  </Card>
+  <Card title="Development guide" href="/development" icon="code">
+    Start building with the application
+  </Card>
+</CardGroup>

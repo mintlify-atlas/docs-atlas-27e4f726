@@ -1,0 +1,174 @@
+---
+title: BaseComponent
+description: Base layout component that manages page titles, references, and speech functionality
+---
+
+## Overview
+
+The `BaseComponent` serves as a foundational layout component that provides common functionality for page title management, reference toggling, status messages with speech synthesis, and integration with backend services. It's designed to be extended or used as a standalone component for pages requiring these core features.
+
+## Component metadata
+
+<ParamField path="selector" type="string" default="app-base">
+  Component selector used in templates
+</ParamField>
+
+<ParamField path="standalone" type="boolean" default="true">
+  This component is standalone and can be used independently
+</ParamField>
+
+<ParamField path="templateUrl" type="string" default="./base.component.html">
+  Path to the component template
+</ParamField>
+
+<ParamField path="styleUrl" type="string" default="./base.component.css">
+  Path to the component styles
+</ParamField>
+
+## Properties
+
+### Public properties
+
+<ParamField path="pageTitle" type="string" default="''">
+  The current page title displayed in the component. This property has both getter and setter methods for controlled access.
+</ParamField>
+
+<ParamField path="isListVisible" type="boolean" default="false">
+  Controls the visibility state of the references list. Initially hidden.
+</ParamField>
+
+<ParamField path="toogleLisCaption" type="string" default="'[See references]'">
+  The caption text for the toggle button. Changes between "[See references]" and "[Hide references]" based on `isListVisible` state.
+</ParamField>
+
+<ParamField path="status_message" type="signal<string>" default="signal<string>('')">
+  Angular signal containing the current status message. Changes trigger speech synthesis through an effect.
+</ParamField>
+
+<ParamField path="_pages" type="any[]" default="[]">
+  Array of page references loaded from the environment configuration.
+</ParamField>
+
+<ParamField path="_page_name" type="string" default="''">
+  The internal page name retrieved from the environment configuration.
+</ParamField>
+
+## Constructor dependencies
+
+The component injects several services:
+
+<ParamField path="configService" type="ConfigService">
+  Service for loading configuration and page data
+</ParamField>
+
+<ParamField path="backendService" type="BackendService">
+  Service for backend operations including logging
+</ParamField>
+
+<ParamField path="route" type="ActivatedRoute">
+  Angular router service for accessing route parameters
+</ParamField>
+
+<ParamField path="speechService" type="SpeechService">
+  Service for text-to-speech functionality
+</ParamField>
+
+<ParamField path="PAGE_TITLE_LOG" type="string">
+  Injected token containing the page title key for configuration lookup
+</ParamField>
+
+## Methods
+
+### toggleList()
+
+Toggles the visibility of the references list and updates the caption accordingly.
+
+```typescript
+toggleList(): void
+```
+
+**Behavior:**
+- Inverts the `isListVisible` state
+- Updates `toogleLisCaption` to "[See references]" when hidden or "[Hide references]" when visible
+- Speaks "See references" when the list becomes visible
+
+## Template usage
+
+The component template is minimal, displaying only the page title:
+
+```html
+<div>
+    <h1>{{this.pageTitle}}</h1>
+</div>
+```
+
+## Usage example
+
+<Tabs>
+  <Tab title="Template">
+    ```html
+    <app-base></app-base>
+    ```
+  </Tab>
+  <Tab title="TypeScript">
+    ```typescript
+    import { Component } from '@angular/core';
+    import { BaseComponent } from './path/to/base.component';
+
+    @Component({
+      selector: 'app-my-page',
+      template: '<app-base></app-base>',
+      imports: [BaseComponent],
+      standalone: true
+    })
+    export class MyPageComponent {}
+    ```
+  </Tab>
+</Tabs>
+
+## Initialization flow
+
+1. **Effect registration**: An effect is registered to monitor `status_message` signal changes
+2. **Configuration loading**: `configService._loadMainPages()` is called asynchronously
+3. **Page data retrieval**: Page data is fetched from `_environment.mainPageListDictionary` using the injected `PAGE_TITLE_LOG` key
+4. **Title setting**: The page title is set and spoken using the speech service
+5. **Backend logging**: The page title is logged to the backend
+6. **References loading**: If available, page references are loaded into `_pages` array
+
+## Key features
+
+### Speech synthesis integration
+
+The component automatically speaks:
+- The page title when initialized (in en-US locale)
+- Status messages when they change (reactive effect)
+- "See references" when the references list is shown
+
+### Signal-based reactivity
+
+Uses Angular signals for the `status_message` property with an effect that:
+```typescript
+effect(() => {
+  if (this.status_message())
+    console.log(`status_message : ${this.status_message()} `);
+    this.speechService.speakTextCustom(this.status_message());
+});
+```
+
+### Error handling
+
+Includes graceful fallback when page data is not found:
+```typescript
+if (this._page_name && typeof this._page_name === 'string') {
+  // Normal initialization
+} else {
+  console.warn(`Page data not found for key: ${PAGE_TITLE_LOG}`);
+  this.pageTitle = PAGE_TITLE_LOG;
+}
+```
+
+## Source location
+
+- TypeScript: `~/workspace/source/src/app/_components/base/base.component.ts`
+- Template: `~/workspace/source/src/app/_components/base/base.component.html`
+- Styles: `~/workspace/source/src/app/_components/base/base.component.css`

@@ -1,0 +1,440 @@
+---
+title: BackendService
+description: Primary service for backend API communication, file generation, logging, and data retrieval across multiple backend technologies
+---
+
+## Overview
+
+The `BackendService` is the main service for handling backend API operations in the Angular PWA Demo. It extends `BaseService` and implements `OnInit`, providing methods for logging, CSV/Excel file generation, and data retrieval from multiple backend technologies including .NET Core, Node.js, Spring Boot, and Django.
+
+<Note>
+This service showcases Angular 21's functional dependency injection pattern using the `inject()` function instead of constructor-based injection.
+</Note>
+
+## Service configuration
+
+<CodeGroup>
+```typescript Angular 21 inject() - Recommended
+import { inject } from '@angular/core';
+import { BackendService } from './_services/BackendService/backend.service';
+
+export class AppComponent {
+  private readonly backendService = inject(BackendService);
+  
+  ngOnInit(): void {
+    const baseUrl = this._configService.getConfigValue('baseUrlNetCore');
+    if (baseUrl) {
+      this.backendService._SetSTATPieCache(baseUrl);
+      this.backendService._SetSTATBarCache(baseUrl);
+    }
+  }
+}
+```
+
+```typescript Traditional constructor injection
+import { BackendService } from 'src/app/_services/BackendService/backend.service';
+
+@Component({
+  selector: 'app-files-generation-xls',
+  templateUrl: './files-generation-xls.component.html',
+  standalone: false
+})
+export class FilesGenerationXLSComponent {
+  constructor(public override backendService: BackendService) {}
+}
+```
+</CodeGroup>
+
+## Dependencies
+
+The service uses Angular 21's functional injection:
+
+<ParamField path="http" type="HttpClient" required>
+  Injected using `inject(HttpClient)` for making HTTP requests
+</ParamField>
+
+<ParamField path="_configService" type="ConfigService" required>
+  Injected using `inject(ConfigService)` for configuration values
+</ParamField>
+
+<ParamField path="destroyRef" type="DestroyRef" required>
+  Injected using `inject(DestroyRef)` for managing subscriptions lifecycle
+</ParamField>
+
+```typescript
+export class BackendService extends BaseService implements OnInit {
+  // v21: Functional injection (replaces constructor injection)
+  public readonly http           = inject(HttpClient);
+  public readonly _configService = inject(ConfigService);
+  private readonly destroyRef    = inject(DestroyRef);
+
+  constructor() {
+    super();
+  }
+}
+```
+
+## Common methods
+
+### _GetWebApiAppVersion
+
+Retrieves the .NET Core Web API application version.
+
+```typescript
+_GetWebApiAppVersion(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the API version.
+
+**Usage example:**
+
+```typescript
+this.backendService._GetWebApiAppVersion()
+  .subscribe({
+    next: (version) => console.log('API Version:', version),
+    error: (err) => console.error('Error:', err)
+  });
+```
+
+### _GetASPNETCoreCppVersion
+
+Retrieves the ASP.NET Core C++ entry point version.
+
+```typescript
+_GetASPNETCoreCppVersion(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the C++ API version.
+
+### SetLog
+
+Logs application events to the backend server.
+
+```typescript
+SetLog(p_PageTitle: string, p_logMsg: string, logType: LogType = LogType.Info): void
+```
+
+<ParamField path="p_PageTitle" type="string" required>
+  The title of the page where the log originated
+</ParamField>
+
+<ParamField path="p_logMsg" type="string" required>
+  The log message to record
+</ParamField>
+
+<ParamField path="logType" type="LogType" default="LogType.Info">
+  The type of log entry (Info, Warning, Error)
+</ParamField>
+
+<Warning>
+This method uses `takeUntilDestroyed(this.destroyRef)` to prevent the NG0203 error when called asynchronously outside the constructor.
+</Warning>
+
+**Usage example:**
+
+```typescript
+import { LogType } from 'src/app/_models/entity.model';
+
+this.backendService.SetLog(
+  'Home Page',
+  'User logged in successfully',
+  LogType.Info
+);
+```
+
+## CSV file generation
+
+### getCSVLink
+
+Retrieves a link to a generated CSV file.
+
+```typescript
+getCSVLink(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the CSV file URL.
+
+### getInformeRemotoCSV
+
+Generates a CSV report from the .NET Core backend.
+
+```typescript
+getInformeRemotoCSV(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the CSV data.
+
+### getInformeRemotoCSV_STAT
+
+Generates a statistical CSV report from cached data.
+
+```typescript
+getInformeRemotoCSV_STAT(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the statistical CSV data.
+
+### _SetSTATPieCache
+
+Caches statistical pie chart data on the backend.
+
+```typescript
+_SetSTATPieCache(_prefix: string | undefined): void
+```
+
+<ParamField path="_prefix" type="string | undefined" required>
+  The base URL prefix for the API endpoint
+</ParamField>
+
+**Usage example:**
+
+```typescript
+private setupCache(): void {
+  const baseUrl = this._configService.getConfigValue('baseUrlNetCore');
+  if (baseUrl) {
+    this.backendService._SetSTATPieCache(baseUrl);
+  }
+}
+```
+
+### getInformeRemotoCSV_NodeJS
+
+Generates a CSV report from the Node.js backend.
+
+```typescript
+getInformeRemotoCSV_NodeJS(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing the CSV data from Node.js.
+
+## Excel file generation
+
+### getLogRemoto
+
+Retrieves log entries from the .NET Core backend.
+
+```typescript
+getLogRemoto(_searchCriteria: SearchCriteria): Observable<LogEntry[]>
+```
+
+<ParamField path="_searchCriteria" type="SearchCriteria" required>
+  Search criteria object containing date range and filters
+</ParamField>
+
+**Returns:** An `Observable<LogEntry[]>` containing the log entries.
+
+**Real-world usage:**
+
+```typescript
+public searchLogs(searchCriteria: SearchCriteria): void {
+  this.backendService.getLogRemoto(searchCriteria)
+    .subscribe({
+      next: (logEntries: LogEntry[]) => {
+        this.dataSource = new MatTableDataSource<LogEntry>(logEntries);
+        this.dataSource.paginator = this.paginator;
+        this.statusMessage.set(`[${logEntries.length}] records found`);
+      },
+      error: (err: Error) => {
+        console.error('Error fetching logs:', err.message);
+        this.statusMessage.set('An error occurred. Please try again');
+      },
+      complete: () => {
+        this.buttonCaption = '[Search]';
+      }
+    });
+}
+```
+
+### getLogRemotoNodeJS
+
+Retrieves log entries from the Node.js backend.
+
+```typescript
+getLogRemotoNodeJS(_searchCriteria: SearchCriteria): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON log data from Node.js.
+
+**Usage example:**
+
+```typescript
+this.backendService.getLogRemotoNodeJS(searchCriteria)
+  .subscribe({
+    next: (logData: string) => {
+      const logEntries = JSON.parse(logData)['recordsets'][0];
+      this.dataSource = new MatTableDataSource<LogEntry>(logEntries);
+    }
+  });
+```
+
+### getLogRemotoSprinbBootJava
+
+Retrieves log entries from the Spring Boot (Java) backend.
+
+```typescript
+getLogRemotoSprinbBootJava(_searchCriteria: SearchCriteria): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON log data from Spring Boot.
+
+### getPersonsSprinbBootJava
+
+Retrieves person records from the Spring Boot backend.
+
+```typescript
+getPersonsSprinbBootJava(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON person data.
+
+### getLogRemotoDjangoPython
+
+Retrieves log entries from the Django (Python) backend.
+
+```typescript
+getLogRemotoDjangoPython(_searchCriteria: SearchCriteria): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON log data from Django.
+
+### getInformeExcel
+
+Generates an Excel file from the .NET Core backend.
+
+```typescript
+getInformeExcel(_searchCriteria: SearchCriteria): Observable<string>
+```
+
+<ParamField path="_searchCriteria" type="SearchCriteria" required>
+  Search criteria for the Excel report
+</ParamField>
+
+**Returns:** An `Observable<string>` containing the Excel file name.
+
+**Real-world usage:**
+
+```typescript
+public generateExcelReport(searchCriteria: SearchCriteria): void {
+  this.backendService.getInformeExcel(searchCriteria)
+    .subscribe({
+      next: (excelFileName: string) => {
+        const urlFile = UtilManager.DebugHostingContent(excelFileName);
+        this.excelDownloadLink = `${this.configService.getConfigValue('baseUrlNetCore')}/wwwroot/xlsx/${urlFile}`;
+        this.statusMessage.set('[XLS file generated correctly]');
+        this.downloadLinkText = '[Download XLS File]';
+      },
+      error: (err: Error) => {
+        console.error('Error generating Excel:', err.message);
+        this.statusMessage.set('[An error occurred]');
+      }
+    });
+}
+```
+
+### getPersonsDjangoPython
+
+Retrieves person records from the Django backend.
+
+```typescript
+getPersonsDjangoPython(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON person data from Django.
+
+### getLogStatGET
+
+Retrieves statistical log data from the .NET Core backend cache.
+
+```typescript
+getLogStatGET(): Observable<string>
+```
+
+**Returns:** An `Observable<string>` containing JSON statistical data.
+
+### _SetSTATBarCache
+
+Caches statistical bar chart data on the backend.
+
+```typescript
+_SetSTATBarCache(_prefix: string | undefined): void
+```
+
+<ParamField path="_prefix" type="string | undefined" required>
+  The base URL prefix for the API endpoint
+</ParamField>
+
+## Angular 21 features
+
+This service demonstrates several Angular 21 best practices:
+
+<Tabs>
+  <Tab title="Functional injection">
+    Uses `inject()` function instead of constructor parameters:
+    ```typescript
+    public readonly http = inject(HttpClient);
+    public readonly _configService = inject(ConfigService);
+    private readonly destroyRef = inject(DestroyRef);
+    ```
+  </Tab>
+  <Tab title="DestroyRef">
+    Captures injection context for `takeUntilDestroyed()` operator:
+    ```typescript
+    this.http.get<string>(p_url, this.HTTPOptions_Text)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (logResult) => { /* Handle success */ },
+        error: (err) => { /* Handle error */ }
+      });
+    ```
+  </Tab>
+  <Tab title="Lifecycle management">
+    Automatically unsubscribes from observables when the service is destroyed, preventing memory leaks.
+  </Tab>
+</Tabs>
+
+## Multi-backend support
+
+The service communicates with multiple backend technologies:
+
+<CardGroup cols={2}>
+  <Card title=".NET Core / C#" icon="microsoft">
+    Primary backend for most operations including file generation and logging.
+  </Card>
+  <Card title="Node.js / JavaScript" icon="node-js">
+    Alternative backend for CSV and log data retrieval.
+  </Card>
+  <Card title="Spring Boot / Java" icon="java">
+    Backend for Java-based log and person data operations.
+  </Card>
+  <Card title="Django / Python" icon="python">
+    Backend for Python-based log and person data operations.
+  </Card>
+</CardGroup>
+
+## Best practices
+
+<Steps>
+  <Step title="Use takeUntilDestroyed">
+    Always use `takeUntilDestroyed(this.destroyRef)` for subscriptions to prevent memory leaks.
+  </Step>
+  <Step title="Handle errors gracefully">
+    Implement error handlers in all subscriptions to provide user feedback.
+  </Step>
+  <Step title="Validate inputs">
+    Check for empty or null parameters before making API calls.
+  </Step>
+  <Step title="Update UI status">
+    Keep users informed during long-running operations like file generation.
+  </Step>
+</Steps>
+
+## Related services
+
+- [ConfigService](/services/config-service) - Provides configuration values and base URLs
+- [AlgorithmService](/services/algorithm-service) - Handles algorithm-specific operations
+
+## Source location
+
+```
+~/workspace/source/src/app/_services/BackendService/backend.service.ts
+```

@@ -1,0 +1,412 @@
+---
+title: Computer vision service
+description: Angular service for image processing and shape detection using OpenCV.js and C++ backend
+---
+
+The `ComputerVisionService` provides computer vision capabilities through both OpenCV.js (client-side) and a C++ backend (server-side). It supports shape detection, fractal generation, and general image processing operations.
+
+## Overview
+
+This service extends `BaseService` and uses:
+- **OpenCV.js 4.8.0** for client-side image processing
+- **C++ OpenCV backend** via .NET Core API for server-side processing
+- **RxJS Observables** for async operations
+- **Functional dependency injection** (Angular v21+)
+
+<Warning>
+  OpenCV.js must be loaded before using client-side methods. The library is loaded from `https://docs.opencv.org/4.8.0/opencv.js` in `index.html`.
+</Warning>
+
+## Installation
+
+The service is provided at root level:
+
+```typescript
+import { ComputerVisionService } from '@services/__AI/ComputerVisionService/Computer-Vision.service';
+import { inject } from '@angular/core';
+
+export class MyComponent {
+  private cvService = inject(ComputerVisionService);
+}
+```
+
+## OpenCV.js integration
+
+The OpenCV.js library is loaded in `index.html`:
+
+```html
+<script async="true" src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
+```
+
+Type definitions are provided in `opencv.d.ts`:
+
+```typescript
+declare var cv: any;
+```
+
+## Methods
+
+### Version information methods
+
+Retrieve version information from the C++ OpenCV backend.
+
+#### _OpenCv_GetAppVersion()
+
+Returns the OpenCV application version from the backend.
+
+```typescript
+_OpenCv_GetAppVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the application version string
+
+**Example:**
+
+```typescript
+const cvService = inject(ComputerVisionService);
+
+cvService._OpenCv_GetAppVersion().subscribe(version => {
+  console.log('OpenCV App Version:', version);
+});
+```
+
+#### _OpenCv_GetAPIVersion()
+
+Returns the OpenCV API version from the backend.
+
+```typescript
+_OpenCv_GetAPIVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the API version string
+
+**Example:**
+
+```typescript
+cvService._OpenCv_GetAPIVersion().subscribe(version => {
+  console.log('OpenCV API Version:', version);
+});
+```
+
+#### _OpenCv_GetCPPSTDVersion()
+
+Returns the C++ standard library version used by the backend.
+
+```typescript
+_OpenCv_GetCPPSTDVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the C++ STD version string
+
+**Example:**
+
+```typescript
+cvService._OpenCv_GetCPPSTDVersion().subscribe(version => {
+  console.log('C++ STD Version:', version);
+});
+```
+
+### Fractal generation
+
+#### _OpenCv_GetFractal()
+
+Generates a Julia set fractal image using OpenCV on the backend.
+
+```typescript
+_OpenCv_GetFractal(
+  p_maxIterations: number,
+  p_realPart: number,
+  p_imagPart: number
+): Observable<Blob>
+```
+
+<ParamField path="p_maxIterations" type="number" required>
+  Maximum number of iterations for fractal calculation (typically 100-1000)
+</ParamField>
+
+<ParamField path="p_realPart" type="number" required>
+  Real part of the complex constant (typically -1.0 to 1.0)
+</ParamField>
+
+<ParamField path="p_imagPart" type="number" required>
+  Imaginary part of the complex constant (typically -1.0 to 1.0)
+</ParamField>
+
+**Returns:** Observable emitting image Blob
+
+**Example:**
+
+```typescript
+const cvService = inject(ComputerVisionService);
+const maxIterations = 500;
+const realPart = -0.7;
+const imagPart = 0.27015;
+
+cvService._OpenCv_GetFractal(maxIterations, realPart, imagPart).subscribe({
+  next: (blob) => {
+    const imageUrl = URL.createObjectURL(blob);
+    const img = document.getElementById('fractal-image') as HTMLImageElement;
+    img.src = imageUrl;
+  },
+  error: (err) => console.error('Fractal generation failed:', err)
+});
+```
+
+### Backend image processing
+
+#### _OpenCv_CPP_uploadBase64Image()
+
+Processes an image using OpenCV on the C++ backend.
+
+```typescript
+_OpenCv_CPP_uploadBase64Image(base64Image: string): Observable<OCRResponse>
+```
+
+<ParamField path="base64Image" type="string" required>
+  Base64-encoded image string (with or without data URI prefix)
+</ParamField>
+
+**Returns:** Observable emitting `OCRResponse` with processing results
+
+**Example:**
+
+```typescript
+const cvService = inject(ComputerVisionService);
+const imageData = 'data:image/png;base64,iVBORw0KGgoAAAANS...';
+
+cvService._OpenCv_CPP_uploadBase64Image(imageData).subscribe({
+  next: (response) => {
+    console.log('Processing result:', response.message);
+    console.log('Data:', response.data);
+  },
+  error: (err) => console.error('Processing failed:', err)
+});
+```
+
+### Client-side shape detection
+
+#### _OpenCv_js_detectShapes()
+
+Detects geometric shapes in an image using OpenCV.js on the client side.
+
+```typescript
+_OpenCv_js_detectShapes(imageElement: HTMLImageElement): string[]
+```
+
+<ParamField path="imageElement" type="HTMLImageElement" required>
+  HTML image element containing the image to analyze
+</ParamField>
+
+**Returns:** Array of detected shape names: `[Triangle]`, `[Rectangle/Square]`, or `[Circle]`
+
+**Algorithm:**
+
+1. Converts image to grayscale
+2. Applies Canny edge detection (thresholds: 50, 150)
+3. Finds contours using `RETR_EXTERNAL` mode
+4. Approximates contours with `approxPolyDP`
+5. Classifies shapes based on vertex count:
+   - 3 vertices: Triangle
+   - 4 vertices: Rectangle/Square
+   - 5+ vertices: Circle
+
+**Example:**
+
+```typescript
+const cvService = inject(ComputerVisionService);
+const img = document.getElementById('my-image') as HTMLImageElement;
+
+const shapes = cvService._OpenCv_js_detectShapes(img);
+console.log('Detected shapes:', shapes);
+// Output: ['[Rectangle/Square]', '[Circle]', '[Triangle]']
+```
+
+<Warning>
+  This method returns `['OpenCV not loaded']` if OpenCV.js is not available on the `window` object. Ensure the script has finished loading before calling this method.
+</Warning>
+
+## Complete shape detection example
+
+Here's a complete component demonstrating shape detection:
+
+```typescript
+import { Component, inject, signal, ViewChild, ElementRef } from '@angular/core';
+import { ComputerVisionService } from '@services/__AI/ComputerVisionService/Computer-Vision.service';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-shape-detector',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div>
+      <input type="file" accept="image/*" (change)="onFileSelected($event)" />
+      <button (click)="detectShapes()" [disabled]="!imageLoaded()">Detect Shapes</button>
+      
+      @if (imageLoaded()) {
+        <img #imageElement [src]="imageSrc()" alt="Uploaded image" />
+      }
+      
+      @if (detectedShapes().length > 0) {
+        <div>
+          <h3>Detected Shapes:</h3>
+          <ul>
+            @for (shape of detectedShapes(); track $index) {
+              <li>{{ shape }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  `
+})
+export class ShapeDetectorComponent {
+  private cvService = inject(ComputerVisionService);
+  
+  @ViewChild('imageElement') imageElement!: ElementRef<HTMLImageElement>;
+  
+  imageSrc = signal<string | null>(null);
+  imageLoaded = signal(false);
+  detectedShapes = signal<string[]>([]);
+
+  onFileSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imageSrc.set(reader.result as string);
+      this.imageLoaded.set(true);
+      this.detectedShapes.set([]);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  detectShapes(): void {
+    if (!this.imageElement) return;
+    
+    const img = this.imageElement.nativeElement;
+    const shapes = this.cvService._OpenCv_js_detectShapes(img);
+    this.detectedShapes.set(shapes);
+  }
+}
+```
+
+## Fractal generation example
+
+Generate and display Julia set fractals:
+
+```typescript
+import { Component, inject, signal } from '@angular/core';
+import { ComputerVisionService } from '@services/__AI/ComputerVisionService/Computer-Vision.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-fractal-generator',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div>
+      <h2>Julia Set Fractal Generator</h2>
+      
+      <label>
+        Max Iterations: 
+        <input type="number" [(ngModel)]="maxIterations" />
+      </label>
+      
+      <label>
+        Real Part: 
+        <input type="number" step="0.01" [(ngModel)]="realPart" />
+      </label>
+      
+      <label>
+        Imaginary Part: 
+        <input type="number" step="0.01" [(ngModel)]="imagPart" />
+      </label>
+      
+      <button (click)="generateFractal()" [disabled]="loading()">Generate</button>
+      
+      @if (loading()) {
+        <p>Generating fractal...</p>
+      }
+      
+      @if (fractalUrl()) {
+        <img [src]="fractalUrl()" alt="Julia Set Fractal" />
+      }
+    </div>
+  `
+})
+export class FractalGeneratorComponent {
+  private cvService = inject(ComputerVisionService);
+  
+  maxIterations = 500;
+  realPart = -0.7;
+  imagPart = 0.27015;
+  
+  fractalUrl = signal<string | null>(null);
+  loading = signal(false);
+
+  generateFractal(): void {
+    this.loading.set(true);
+    
+    this.cvService._OpenCv_GetFractal(
+      this.maxIterations,
+      this.realPart,
+      this.imagPart
+    ).subscribe({
+      next: (blob) => {
+        // Revoke previous URL to prevent memory leaks
+        if (this.fractalUrl()) {
+          URL.revokeObjectURL(this.fractalUrl()!);
+        }
+        
+        const url = URL.createObjectURL(blob);
+        this.fractalUrl.set(url);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Fractal generation failed:', err);
+        this.loading.set(false);
+      }
+    });
+  }
+}
+```
+
+## OpenCV.js memory management
+
+OpenCV.js uses WebAssembly and requires manual memory management. Always delete Mat objects after use:
+
+```typescript
+const src = cv.imread(imageElement);
+const gray = new cv.Mat();
+
+try {
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+  // Process image...
+} finally {
+  // Clean up
+  src.delete();
+  gray.delete();
+}
+```
+
+The `_OpenCv_js_detectShapes` method already handles cleanup automatically.
+
+## Backend configuration
+
+Ensure your `environment.ts` includes:
+
+```typescript
+export const environment = {
+  externalConfig: {
+    baseUrlNetCoreCPPEntry: 'https://your-cpp-backend.com/'
+  }
+};
+```
+
+## Related services
+
+- [OCR service](/services/ocr-service) - Text extraction from images
+- [TensorFlow service](/services/tensorflow-service) - Machine learning predictions

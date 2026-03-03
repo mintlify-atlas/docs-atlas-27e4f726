@@ -1,0 +1,433 @@
+---
+title: ConfigService
+description: Configuration management service for loading external configuration, managing application settings, and providing utility functions
+---
+
+## Overview
+
+The `ConfigService` is a utility service that manages application configuration by loading external JSON files and providing access to configuration values throughout the application. It handles configuration loading, URL parameter parsing, and includes helper functions like GUID generation.
+
+## Service configuration
+
+<CodeGroup>
+```typescript Angular 21 inject() - Recommended
+import { inject } from '@angular/core';
+import { ConfigService } from './_services/__Utils/ConfigService/config.service';
+
+export class AppComponent {
+  private readonly _configService = inject(ConfigService);
+  
+  ngOnInit(): void {
+    const brand = this._configService.getConfigValue('appBrand') ?? 'App';
+    const version = this._configService.getConfigValue('appVersion') ?? '1.0.0';
+    console.log(`${brand} - ${version}`);
+  }
+}
+```
+
+```typescript Traditional constructor injection
+import { ConfigService } from 'src/app/_services/__Utils/ConfigService/config.service';
+
+@Component({
+  selector: 'app-home',
+  templateUrl: './home.component.html',
+  standalone: false
+})
+export class HomeComponent {
+  constructor(public configService: ConfigService) {}
+}
+```
+</CodeGroup>
+
+<Note>
+The `ConfigService` is registered with `providedIn: 'root'`, making it a singleton service available throughout the application.
+</Note>
+
+## Dependencies
+
+<ParamField path="http" type="HttpClient" required>
+  Angular's HTTP client for loading configuration files
+</ParamField>
+
+<ParamField path="route" type="ActivatedRoute" required>
+  Angular router service for accessing URL query parameters
+</ParamField>
+
+## Configuration loading
+
+### loadConfig
+
+Loads the main application configuration from a JSON file during application initialization.
+
+```typescript
+loadConfig(): Promise<void>
+```
+
+**Returns:** A `Promise<void>` that resolves when configuration is loaded.
+
+**Configuration file location:** `./assets/config/config.json`
+
+**Usage example in APP_INITIALIZER:**
+
+```typescript
+// app.module.ts
+import { APP_INITIALIZER } from '@angular/core';
+import { ConfigService } from './_services/__Utils/ConfigService/config.service';
+
+@NgModule({
+  providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (configService: ConfigService) => {
+        return () => configService.loadConfig();
+      },
+      deps: [ConfigService],
+      multi: true
+    }
+  ]
+})
+export class AppModule { }
+```
+
+<Warning>
+The `loadConfig()` method should only be called once during application initialization. It stores configuration in the global `_environment.externalConfig` object.
+</Warning>
+
+### loadJsonData
+
+Loads JSON data from a specified path and populates an array.
+
+```typescript
+loadJsonData(p_Path: string, array: string[]): Promise<void>
+```
+
+<ParamField path="p_Path" type="string" required>
+  The path to the JSON file to load
+</ParamField>
+
+<ParamField path="array" type="string[]" required>
+  The array to populate with loaded data
+</ParamField>
+
+**Returns:** A `Promise<void>` that resolves when data is loaded.
+
+**Usage example:**
+
+```typescript
+const dataArray: string[] = [];
+this.configService.loadJsonData('./assets/data/items.json', dataArray)
+  .then(() => {
+    console.log('Data loaded:', dataArray);
+  })
+  .catch(error => {
+    console.error('Error loading data:', error);
+  });
+```
+
+### _loadMainPages
+
+Loads the main pages configuration and creates a dictionary for quick lookups.
+
+```typescript
+_loadMainPages(): Promise<void>
+```
+
+**Returns:** A `Promise<void>` that resolves when main pages are loaded.
+
+**Configuration file location:** `./assets/config/mainPages.json`
+
+**What it does:**
+- Loads page configuration from JSON
+- Stores pages in `_environment.mainPageList`
+- Creates a dictionary `_environment.mainPageListDictionary` keyed by `log_name`
+
+**Usage example:**
+
+```typescript
+this.configService._loadMainPages()
+  .then(() => {
+    const mainPages = _environment.mainPageList;
+    const homePage = _environment.mainPageListDictionary['home'];
+    console.log('Main pages loaded:', mainPages.length);
+  });
+```
+
+## Configuration access
+
+### getConfigValue
+
+Retrieves a configuration value by key from the loaded configuration.
+
+```typescript
+getConfigValue(key: string): string
+```
+
+<ParamField path="key" type="string" required>
+  The configuration key to retrieve
+</ParamField>
+
+**Returns:** The configuration value as a string.
+
+**Common configuration keys:**
+
+<Tabs>
+  <Tab title="Base URLs">
+    ```typescript
+    // Get backend API URLs
+    const netCoreUrl = this.configService.getConfigValue('baseUrlNetCore');
+    const cppUrl = this.configService.getConfigValue('baseUrlNetCoreCPPEntry');
+    const nodeUrl = this.configService.getConfigValue('baseUrlNodeJs');
+    const javaUrl = this.configService.getConfigValue('baseUrlSpringBootJava');
+    const pythonUrl = this.configService.getConfigValue('baseUrlDjangoPython');
+    ```
+  </Tab>
+  <Tab title="App metadata">
+    ```typescript
+    // Get application information
+    const appBrand = this.configService.getConfigValue('appBrand');
+    const appVersion = this.configService.getConfigValue('appVersion');
+    const appTitle = this.configService.getConfigValue('appTitle');
+    ```
+  </Tab>
+  <Tab title="Feature flags">
+    ```typescript
+    // Get feature configuration
+    const enableFeature = this.configService.getConfigValue('enableNewFeature');
+    const debugMode = this.configService.getConfigValue('debugMode');
+    ```
+  </Tab>
+</Tabs>
+
+**Real-world usage:**
+
+```typescript
+private initializeConfig(): void {
+  const brand = this._configService.getConfigValue('appBrand') ?? 'App';
+  const version = this._configService.getConfigValue('appVersion') ?? '1.0.0';
+  
+  this.appBrand.set(brand);
+  this.appVersion.set(version);
+  this.titleService.setTitle(`${brand} - ${version}`);
+}
+
+private buildApiUrl(endpoint: string): string {
+  const baseUrl = this._configService.getConfigValue('baseUrlNetCore');
+  return `${baseUrl}${endpoint}`;
+}
+```
+
+## Utility functions
+
+### generateGuid
+
+Generates a random GUID (Globally Unique Identifier) in the format `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.
+
+```typescript
+generateGuid(): string
+```
+
+**Returns:** A string representing the generated GUID.
+
+**Usage example:**
+
+```typescript
+const uniqueId = this.configService.generateGuid();
+console.log('Generated GUID:', uniqueId);
+// Output: 'a3f2b5c4-1234-4abc-9def-567890abcdef'
+
+// Use in component
+const sessionId = this.configService.generateGuid();
+this.trackUserSession(sessionId);
+```
+
+### queryUrlParams
+
+Retrieves a query parameter value from the current route's URL.
+
+```typescript
+queryUrlParams(paraName: string): string
+```
+
+<ParamField path="paraName" type="string" required>
+  The name of the query parameter to retrieve
+</ParamField>
+
+**Returns:** The query parameter value as a string, or an empty string if not found.
+
+**Usage example:**
+
+```typescript
+// URL: http://localhost:4200/algorithm?langName=CPP&searchTerm=sort
+
+const langName = this.configService.queryUrlParams('langName');
+console.log('Language:', langName); // Output: 'CPP'
+
+const searchTerm = this.configService.queryUrlParams('searchTerm');
+console.log('Search term:', searchTerm); // Output: 'sort'
+
+const notFound = this.configService.queryUrlParams('nonExistent');
+console.log('Not found:', notFound); // Output: ''
+```
+
+**Advanced usage with dependency injection:**
+
+```typescript
+// Provide query parameter as injectable value
+@Component({
+  selector: 'app-grid-param',
+  templateUrl: './grid-param.component.html',
+  providers: [
+    ConfigService,
+    {
+      provide: 'PAGE_NAME',
+      useFactory: (configService: ConfigService) => 
+        configService.queryUrlParams('pageName'),
+      deps: [ConfigService]
+    },
+    {
+      provide: 'SEARCH_TERM',
+      useFactory: (configService: ConfigService) => 
+        configService.queryUrlParams('searchTerm'),
+      deps: [ConfigService]
+    }
+  ]
+})
+export class GridParamComponent {
+  constructor(
+    @Inject('PAGE_NAME') public pageName: string,
+    @Inject('SEARCH_TERM') public searchTerm: string
+  ) {
+    console.log('Page Name:', this.pageName);
+    console.log('Search Term:', this.searchTerm);
+  }
+}
+```
+
+## Integration with environment
+
+The `ConfigService` integrates with the global `_environment` object:
+
+```typescript
+import { _environment } from 'src/environments/environment';
+
+// Configuration is stored in _environment
+_environment.externalConfig = data;
+
+// Main pages are stored for quick access
+_environment.mainPageList = data;
+_environment.mainPageListDictionary[element.log_name] = element;
+```
+
+## Example configuration file
+
+Here's an example of what `config.json` might look like:
+
+```json
+{
+  "appBrand": "Angular PWA Demo",
+  "appVersion": "1.0.0",
+  "baseUrlNetCore": "https://api.example.com/",
+  "baseUrlNetCoreCPPEntry": "https://cpp-api.example.com/",
+  "baseUrlNodeJs": "https://node-api.example.com/",
+  "baseUrlSpringBootJava": "https://java-api.example.com/",
+  "baseUrlDjangoPython": "https://python-api.example.com/",
+  "enableNewFeature": "true",
+  "debugMode": "false"
+}
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Load early" icon="clock">
+    Use `APP_INITIALIZER` to load configuration before the application starts.
+  </Card>
+  <Card title="Provide defaults" icon="shield-check">
+    Use the nullish coalescing operator (`??`) to provide default values when retrieving configuration.
+  </Card>
+  <Card title="Type safety" icon="code">
+    Consider creating an interface for your configuration object to ensure type safety.
+  </Card>
+  <Card title="Error handling" icon="triangle-exclamation">
+    Always handle errors when loading configuration files to prevent application crashes.
+  </Card>
+</CardGroup>
+
+## Error handling
+
+All loading methods include error handling:
+
+```typescript
+loadConfig() {
+  return this.http.get('./assets/config/config.json').toPromise()
+    .then((data: any) => {
+      _environment.externalConfig = data;
+    })
+    .catch(error => {
+      console.error('Error loading configuration:', error);
+      // Application continues with default values
+    });
+}
+```
+
+## Common use cases
+
+<AccordionGroup>
+  <Accordion title="Building API URLs">
+    ```typescript
+    const baseUrl = this._configService.getConfigValue('baseUrlNetCore');
+    const apiUrl = `${baseUrl}api/Demos/GetAppVersion`;
+    
+    this.http.get<string>(apiUrl).subscribe({
+      next: (version) => console.log('Version:', version)
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Conditional feature rendering">
+    ```typescript
+    ngOnInit(): void {
+      const enableNewFeature = this._configService.getConfigValue('enableNewFeature');
+      this.showNewFeature = enableNewFeature === 'true';
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Dynamic backend selection">
+    ```typescript
+    selectBackend(backendType: string): string {
+      switch(backendType) {
+        case 'csharp':
+          return this._configService.getConfigValue('baseUrlNetCore');
+        case 'nodejs':
+          return this._configService.getConfigValue('baseUrlNodeJs');
+        case 'java':
+          return this._configService.getConfigValue('baseUrlSpringBootJava');
+        default:
+          return this._configService.getConfigValue('baseUrlNetCore');
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Tracking with unique IDs">
+    ```typescript
+    trackUserAction(action: string): void {
+      const sessionId = this._configService.generateGuid();
+      const logMessage = `Action: ${action}, SessionID: ${sessionId}`;
+      this.backendService.SetLog('User Actions', logMessage);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related services
+
+- [BackendService](/services/backend-service) - Uses ConfigService to build API URLs
+- [AlgorithmService](/services/algorithm-service) - Uses ConfigService for backend endpoint configuration
+
+## Source location
+
+```
+~/workspace/source/src/app/_services/__Utils/ConfigService/config.service.ts
+```

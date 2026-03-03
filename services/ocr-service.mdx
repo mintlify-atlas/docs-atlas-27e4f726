@@ -1,0 +1,310 @@
+---
+title: OCR service
+description: Angular service for optical character recognition using Tesseract OCR with C++ and Node.js backends
+---
+
+The `OCRService` provides methods to perform optical character recognition (OCR) on images using Tesseract OCR. It supports both C++ and Node.js backend implementations and follows Angular v21+ best practices with functional dependency injection.
+
+## Overview
+
+This service extends `BaseService` and uses:
+- **Tesseract OCR** for text extraction from images
+- **C++ backend** via .NET Core API
+- **Node.js backend** as an alternative processing engine
+- **RxJS Observables** for async operations
+- **Type-safe interfaces** for response handling
+
+<Warning>
+  The service requires backend APIs to be configured in the `ConfigService` with keys `baseUrlNetCoreCPPEntry` and `baseUrlNodeJsOcr`.
+</Warning>
+
+## Installation
+
+The service is provided at root level and uses functional dependency injection:
+
+```typescript
+import { OCRService } from '@services/__AI/OCRService/ocr.service';
+import { inject } from '@angular/core';
+
+export class MyComponent {
+  private ocrService = inject(OCRService);
+}
+```
+
+## Interface
+
+### OCRResponse
+
+Strongly typed interface for OCR API responses:
+
+```typescript
+export interface OCRResponse {
+  message: string;
+  status?: string;
+  data?: any;
+}
+```
+
+<ParamField path="message" type="string" required>
+  The primary response message containing extracted text or error information
+</ParamField>
+
+<ParamField path="status" type="string">
+  Optional status indicator for the operation
+</ParamField>
+
+<ParamField path="data" type="any">
+  Optional additional data from the OCR processing
+</ParamField>
+
+## Methods
+
+### Version information methods
+
+These methods retrieve version information from the C++ Tesseract backend.
+
+#### _GetTesseract_CPPSTDVersion()
+
+Returns the C++ standard library version used by the backend.
+
+```typescript
+_GetTesseract_CPPSTDVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the C++ STD version string
+
+**Example:**
+
+```typescript
+const ocrService = inject(OCRService);
+
+ocrService._GetTesseract_CPPSTDVersion().subscribe(version => {
+  console.log('C++ STD Version:', version);
+});
+```
+
+#### _GetTesseract_AppVersion()
+
+Returns the application version of the Tesseract backend.
+
+```typescript
+_GetTesseract_AppVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the application version string
+
+**Example:**
+
+```typescript
+ocrService._GetTesseract_AppVersion().subscribe(version => {
+  console.log('App Version:', version);
+});
+```
+
+#### _GetTesseract_APIVersion()
+
+Returns the Tesseract API version.
+
+```typescript
+_GetTesseract_APIVersion(): Observable<string>
+```
+
+**Returns:** Observable emitting the API version string
+
+**Example:**
+
+```typescript
+ocrService._GetTesseract_APIVersion().subscribe(version => {
+  console.log('API Version:', version);
+});
+```
+
+### OCR processing methods
+
+#### uploadBase64ImageCPP()
+
+Processes a Base64-encoded image using the C++ backend with Tesseract OCR.
+
+```typescript
+uploadBase64ImageCPP(base64Image: string): Observable<OCRResponse>
+```
+
+<ParamField path="base64Image" type="string" required>
+  Base64-encoded image string (with or without data URI prefix)
+</ParamField>
+
+**Returns:** Observable emitting `OCRResponse` with extracted text
+
+**Example:**
+
+```typescript
+const ocrService = inject(OCRService);
+const imageData = 'data:image/png;base64,iVBORw0KGgoAAAANS...';
+
+ocrService.uploadBase64ImageCPP(imageData).subscribe({
+  next: (response) => {
+    console.log('Extracted text:', response.message);
+    console.log('Status:', response.status);
+  },
+  error: (err) => console.error('OCR failed:', err)
+});
+```
+
+#### uploadBase64ImageNodeJs()
+
+Processes a Base64-encoded image using the Node.js backend with Tesseract OCR.
+
+```typescript
+uploadBase64ImageNodeJs(base64Image: string): Observable<OCRResponse>
+```
+
+<ParamField path="base64Image" type="string" required>
+  Base64-encoded image string (with or without data URI prefix)
+</ParamField>
+
+**Returns:** Observable emitting `OCRResponse` with extracted text
+
+**Example:**
+
+```typescript
+const ocrService = inject(OCRService);
+const imageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRg...';
+
+ocrService.uploadBase64ImageNodeJs(imageData).subscribe({
+  next: (response) => {
+    console.log('Extracted text:', response.message);
+  },
+  error: (err) => console.error('OCR failed:', err)
+});
+```
+
+## Complete usage example
+
+Here's a complete example showing how to capture an image from a file input and perform OCR:
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { OCRService, OCRResponse } from '@services/__AI/OCRService/ocr.service';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-ocr-demo',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <input type="file" accept="image/*" (change)="onFileSelected($event)" />
+    <button (click)="processWithCPP()" [disabled]="!imageData">Process with C++</button>
+    <button (click)="processWithNodeJs()" [disabled]="!imageData">Process with Node.js</button>
+    
+    @if (loading) {
+      <p>Processing image...</p>
+    }
+    
+    @if (result) {
+      <div>
+        <h3>Extracted Text:</h3>
+        <pre>{{ result.message }}</pre>
+      </div>
+    }
+  `
+})
+export class OcrDemoComponent {
+  private ocrService = inject(OCRService);
+  
+  imageData: string | null = null;
+  result: OCRResponse | null = null;
+  loading = false;
+
+  onFileSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imageData = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  processWithCPP(): void {
+    if (!this.imageData) return;
+    
+    this.loading = true;
+    this.ocrService.uploadBase64ImageCPP(this.imageData).subscribe({
+      next: (response) => {
+        this.result = response;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('OCR failed:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  processWithNodeJs(): void {
+    if (!this.imageData) return;
+    
+    this.loading = true;
+    this.ocrService.uploadBase64ImageNodeJs(this.imageData).subscribe({
+      next: (response) => {
+        this.result = response;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('OCR failed:', err);
+        this.loading = false;
+      }
+    });
+  }
+}
+```
+
+## Angular v21+ features
+
+This service demonstrates modern Angular patterns:
+
+### Functional dependency injection
+
+Replaces constructor-based injection with `inject()` function:
+
+```typescript
+private readonly http = inject(HttpClient);
+private readonly _configService = inject(ConfigService);
+```
+
+### Readonly properties
+
+Ensures immutability after service instantiation:
+
+```typescript
+private readonly __baseUrl = `${this._configService.getConfigValue('baseUrlNetCoreCPPEntry')}api/ocr/`;
+```
+
+### Observable-signal interop ready
+
+All methods return Observables compatible with `toSignal()` and `rxResource()`:
+
+```typescript
+import { toSignal } from '@angular/core/rxjs-interop';
+
+const apiVersion = toSignal(ocrService._GetTesseract_APIVersion(), { initialValue: 'Loading...' });
+```
+
+## Backend configuration
+
+Ensure your `environment.ts` or configuration includes:
+
+```typescript
+export const environment = {
+  externalConfig: {
+    baseUrlNetCoreCPPEntry: 'https://your-cpp-backend.com/',
+    baseUrlNodeJsOcr: 'https://your-nodejs-backend.com/'
+  }
+};
+```
+
+## Related services
+
+- [Computer vision service](/services/computer-vision-service) - OpenCV-based image processing
+- [TensorFlow service](/services/tensorflow-service) - Machine learning predictions

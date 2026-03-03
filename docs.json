@@ -1,122 +1,139 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Angular PWA Demo",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1976d2",
+    "light": "#63a4ff",
+    "dark": "#004ba0"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/aperezNWO/PWA_DEMO_ENV_PROD"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/aperezNWO/PWA_DEMO_ENV_PROD"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "architecture/overview",
+              "architecture/pwa-features",
+              "architecture/routing",
+              "architecture/services"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Features",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "features/algorithms",
+              "features/games",
+              "features/file-generation",
+              "features/computer-vision",
+              "features/machine-learning"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/components",
+              "guides/services",
+              "guides/deployment",
+              "guides/configuration"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Layout Components",
             "pages": [
-              "api-reference/introduction"
+              "components/base",
+              "components/landing",
+              "components/search"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Algorithm Components",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "components/dijkstra",
+              "components/sorting",
+              "components/collision",
+              "components/regex"
+            ]
+          },
+          {
+            "group": "Game Components",
+            "pages": [
+              "components/sudoku",
+              "components/tictactoe",
+              "components/hanoi",
+              "components/tetris"
+            ]
+          },
+          {
+            "group": "Utility Components",
+            "pages": [
+              "components/chart",
+              "components/file-generation",
+              "components/speech-panel"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Services",
+        "groups": [
+          {
+            "group": "Core Services",
+            "pages": [
+              "services/algorithm-service",
+              "services/backend-service",
+              "services/config-service"
+            ]
+          },
+          {
+            "group": "AI Services",
+            "pages": [
+              "services/ocr-service",
+              "services/computer-vision-service",
+              "services/tensorflow-service"
+            ]
+          },
+          {
+            "group": "Game Services",
+            "pages": [
+              "services/sudoku-service",
+              "services/tetris-service"
+            ]
+          },
+          {
+            "group": "Utility Services",
+            "pages": [
+              "services/file-generation-service"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

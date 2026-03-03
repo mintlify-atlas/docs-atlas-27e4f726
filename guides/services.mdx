@@ -1,0 +1,431 @@
+---
+title: Services and dependency injection
+description: Learn how to create and use services in Angular 21 with the inject() function, DestroyRef, and modern DI patterns
+---
+
+## Overview
+
+Services in Angular provide shared functionality across components. Angular 21 introduces improved dependency injection patterns using the `inject()` function and `DestroyRef` for better resource management.
+
+## Service architecture
+
+The Angular PWA Demo uses a hierarchical service structure:
+
+```
+_services/
+├── __baseService/         # Base service with HTTP configurations
+├── __Utils/              # Utility services (Config, Speech, etc.)
+├── __AI/                 # AI-related services
+├── __Games/              # Game logic services
+├── BackendService/       # API communication
+└── AlgorithmService/     # Business logic
+```
+
+## Creating a basic service
+
+<Steps>
+  <Step title="Generate the service">
+    Use the Angular CLI to create a service:
+    ```bash
+    ng generate service _services/MyService/my-service
+    ```
+  </Step>
+
+  <Step title="Configure provider scope">
+    Use `providedIn: 'root'` for singleton services:
+    ```typescript
+    import { Injectable } from '@angular/core';
+
+    @Injectable({
+      providedIn: 'root'
+    })
+    export class MyService {
+      // Service implementation
+    }
+    ```
+  </Step>
+
+  <Step title="Inject the service">
+    Use the modern `inject()` function in components:
+    ```typescript
+    import { Component, inject } from '@angular/core';
+    import { MyService } from './_services/MyService/my-service';
+
+    @Component({
+      // ...
+    })
+    export class MyComponent {
+      private readonly myService = inject(MyService);
+    }
+    ```
+  </Step>
+</Steps>
+
+## Base service pattern
+
+The base service provides shared HTTP configurations at `src/app/_services/__baseService/base.service.ts:1`:
+
+```typescript
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BaseService {
+  public HTTPOptions_Text_Plain = {
+    headers: new HttpHeaders(),
+    'responseType': 'text' as 'json'
+  };
+
+  public HTTPOptions_Text = {
+    headers: new HttpHeaders({
+      'Accept': 'application/text'
+    }),
+    'responseType': 'text' as 'json'
+  };
+
+  public HTTPOptions_JSON = {
+    headers: new HttpHeaders({
+      'Content-Type': 'application/json'
+    }),
+    'responseType': 'text' as 'json'
+  };
+
+  constructor() {}
+}
+```
+
+<Tip>
+  Create a base service to share common configurations and reduce code duplication across services.
+</Tip>
+
+## Modern dependency injection with inject()
+
+Angular 21 introduces the `inject()` function for cleaner dependency injection. Here's the backend service at `src/app/_services/BackendService/backend.service.ts:1`:
+
+```typescript
+import { Injectable, OnInit, inject, DestroyRef } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
+import { ConfigService } from '../__Utils/ConfigService/config.service';
+import { BaseService } from '../__baseService/base.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class BackendService extends BaseService implements OnInit {
+  // Modern inject() function instead of constructor DI
+  public readonly http = inject(HttpClient);
+  public readonly _configService = inject(ConfigService);
+  
+  // DestroyRef for automatic subscription cleanup
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    super();
+  }
+
+  ngOnInit(): void {
+    // Initialization logic
+  }
+
+  _GetWebApiAppVersion(): Observable<string> {
+    const p_url = `${this._configService.getConfigValue('baseUrlNetCore')}api/Demos/GetAppVersion`;
+    return this.http.get<string>(p_url, this.HTTPOptions_Text);
+  }
+
+  // Async method with automatic cleanup
+  public SetLog(p_PageTitle: string, p_logMsg: string, logType: LogType = LogType.Info): void {
+    if (p_PageTitle === '' || p_logMsg === '') return;
+
+    const p_url = `${this._configService.getConfigValue('baseUrlNetCore')}api/Demos/SetLog?p_logMsg=${p_logMsg}&logType=${logType.toString()}`;
+    
+    this.http.get<string>(p_url, this.HTTPOptions_Text)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (logResult) => { /* Handle success */ },
+        error: (err) => { /* Handle error */ }
+      });
+  }
+}
+```
+
+### Key features
+
+<CardGroup cols={2}>
+  <Card title="inject() function" icon="syringe">
+    Modern, functional approach to dependency injection that works outside constructors
+  </Card>
+  <Card title="DestroyRef" icon="trash">
+    Automatic cleanup of subscriptions without manual unsubscribe logic
+  </Card>
+  <Card title="Service inheritance" icon="diagram-project">
+    Extends BaseService for shared HTTP configurations
+  </Card>
+  <Card title="Type safety" icon="shield">
+    Fully typed observables and method parameters
+  </Card>
+</CardGroup>
+
+## Configuration service
+
+The configuration service demonstrates async initialization and config management at `src/app/_services/__Utils/ConfigService/config.service.ts:1`:
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
+import { _environment } from 'src/environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ConfigService {
+  constructor(
+    protected http: HttpClient,
+    public route: ActivatedRoute
+  ) {}
+
+  // Load configuration at app startup
+  loadConfig() {
+    return this.http.get('./assets/config/config.json').toPromise()
+      .then((data: any) => {
+        _environment.externalConfig = data;
+      })
+      .catch(error => {
+        console.error('Error loading configuration:', error);
+      });
+  }
+
+  // Load main pages configuration
+  _loadMainPages(): Promise<void> {
+    return new Promise((resolve) => {
+      this.http.get('./assets/config/mainPages.json').toPromise()
+        .then((data: any) => {
+          _environment.mainPageList = data;
+          _environment.mainPageList.forEach((element: MainPage) => {
+            _environment.mainPageListDictionary[element.log_name] = element;
+          });
+          resolve();
+        })
+        .catch(error => {
+          console.error('Error loading configuration:', error);
+        });
+    });
+  }
+
+  // Get configuration value by key
+  getConfigValue(key: string) {
+    let jsonData: string = JSON.parse(JSON.stringify(_environment.externalConfig))[key];
+    return jsonData;
+  }
+
+  // Generate unique GUID
+  generateGuid(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+      const random = (Math.random() * 16) | 0;
+      const value = char === 'x' ? random : (random & 0x3) | 0x8;
+      return value.toString(16);
+    });
+  }
+
+  // Query URL parameters
+  queryUrlParams(paraName: string): string {
+    let returnValue = "";
+    this.route.queryParams.subscribe(params => {
+      returnValue = params[paraName] ? params[paraName] : "";
+    });
+    return returnValue;
+  }
+}
+```
+
+<Warning>
+  Configuration services that load at app startup should be provided in `APP_INITIALIZER` to ensure config is loaded before app renders.
+</Warning>
+
+## Utility service: Speech service
+
+The speech service shows browser API integration at `src/app/_services/__Utils/SpeechService/speech.service.ts:1`:
+
+```typescript
+import { Injectable } from '@angular/core';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class SpeechService {
+  recognition: any;
+  isListening: boolean = false;
+  transcript: string = '';
+  error: string = '';
+
+  constructor() {
+    // Initialize the SpeechRecognition object
+    const SpeechRecognition = (window as any).SpeechRecognition || 
+                             (window as any).webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      this.recognition = new SpeechRecognition();
+      this.recognition.lang = 'en-US';
+      this.recognition.interimResults = false;
+      this.recognition.maxAlternatives = 1;
+
+      this.recognition.onresult = (event: any) => {
+        this.transcript = event.results[0][0].transcript;
+      };
+
+      this.recognition.onerror = (event: any) => {
+        this.error = event.error;
+        this.isListening = false;
+        console.error('Error:', this.error);
+      };
+
+      this.recognition.onend = () => {
+        this.isListening = false;
+      };
+    } else {
+      console.info('Speech Recognition API is not supported in your browser.');
+    }
+  }
+
+  startListening() {
+    if (this.recognition) {
+      this.isListening = true;
+      this.recognition.start();
+    }
+  }
+
+  stopListening() {
+    if (this.recognition) {
+      this.isListening = false;
+      this.recognition.stop();
+    }
+  }
+
+  speakText(): string {
+    if (this.transcript) {
+      const utterance = new SpeechSynthesisUtterance(this.transcript);
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+    } else {
+      alert('No text to speak!');
+    }
+    return this.transcript;
+  }
+
+  speakTextCustom(_transcript: string, lang: string = '') {
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(_transcript);
+      utterance.lang = (lang == '') ? 'en-US' : lang;
+      speechSynthesis.speak(utterance);
+    }, 1000);
+  }
+}
+```
+
+## Service injection patterns
+
+### Constructor injection (traditional)
+
+```typescript
+export class MyComponent {
+  constructor(private myService: MyService) {}
+}
+```
+
+### inject() function (modern)
+
+```typescript
+export class MyComponent {
+  private readonly myService = inject(MyService);
+}
+```
+
+<Tip>
+  The `inject()` function can be used in field initializers, factory functions, and class constructors, making it more flexible than constructor injection.
+</Tip>
+
+## Handling subscriptions with DestroyRef
+
+<CodeGroup>
+```typescript Old Pattern (Manual Unsubscribe)
+import { Component, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
+
+export class MyComponent implements OnDestroy {
+  private subscription = new Subscription();
+
+  ngOnInit() {
+    this.subscription.add(
+      this.myService.getData().subscribe(data => {
+        // Handle data
+      })
+    );
+  }
+
+  ngOnDestroy() {
+    this.subscription.unsubscribe();
+  }
+}
+```
+
+```typescript New Pattern (DestroyRef)
+import { Component, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+export class MyComponent {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly myService = inject(MyService);
+
+  ngOnInit() {
+    this.myService.getData()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(data => {
+        // Handle data - automatically cleaned up
+      });
+  }
+}
+```
+</CodeGroup>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use providedIn: 'root' for singletons">
+    This makes services tree-shakeable and ensures a single instance across the app.
+  </Accordion>
+
+  <Accordion title="Prefer inject() over constructor injection">
+    The `inject()` function is more flexible and works in more contexts than constructor injection.
+  </Accordion>
+
+  <Accordion title="Always clean up subscriptions">
+    Use `takeUntilDestroyed()` with `DestroyRef` to automatically unsubscribe from observables.
+  </Accordion>
+
+  <Accordion title="Create a base service for shared config">
+    Extend a base service class to share HTTP configurations and common utilities.
+  </Accordion>
+
+  <Accordion title="Keep services focused">
+    Each service should have a single responsibility. Split large services into smaller, focused ones.
+  </Accordion>
+
+  <Accordion title="Use proper error handling">
+    Always handle HTTP errors gracefully and provide fallback values.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Components guide" icon="cube" href="/guides/components">
+    Learn about creating components
+  </Card>
+  <Card title="Configuration guide" icon="sliders" href="/guides/configuration">
+    Configure your application
+  </Card>
+</CardGroup>

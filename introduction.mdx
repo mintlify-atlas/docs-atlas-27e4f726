@@ -1,0 +1,145 @@
+---
+title: Angular PWA demo application
+description: A modern Progressive Web Application built with Angular 21, featuring service workers, Material Design, and comprehensive demo modules
+---
+
+## Welcome to Angular PWA Demo
+
+Angular PWA Demo is a production-ready Progressive Web Application showcasing modern Angular development patterns, offline capabilities, and enterprise-grade architecture. Built with Angular 21, this application demonstrates advanced features including service workers, dependency injection with signals, HTTP interceptors, and modular architecture.
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/installation"
+  >
+    Set up your development environment and install dependencies
+  </Card>
+  <Card
+    title="Quick start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Build your first Angular component and get up and running quickly
+  </Card>
+</CardGroup>
+
+## Key features
+
+### Progressive Web App capabilities
+
+The application is built as a PWA with full offline support through Angular Service Workers. It includes a complete web manifest configuration with multiple icon sizes and standalone display mode for an app-like experience.
+
+### Modern Angular architecture
+
+- **Angular 21**: Built on the latest Angular version with modern APIs
+- **Signals**: Reactive state management using Angular Signals
+- **Standalone components**: Support for both module-based and standalone component architectures
+- **Dependency injection**: Modern inject() function for cleaner service integration
+
+### Comprehensive module system
+
+The application features well-organized feature modules:
+
+- **Algorithm demos**: Dijkstra's algorithm, sorting, collision detection, regex processing
+- **Games**: Tetris, Sudoku, Tic-Tac-Toe with AI, Tower of Hanoi
+- **File generation**: PDF, CSV, Excel export capabilities
+- **AI/ML features**: TensorFlow integration, OCR, computer vision
+- **Utilities**: Speech service, chat, search, configuration management
+
+### Enterprise-grade features
+
+<CardGroup cols={2}>
+  <Card title="HTTP interceptors" icon="shield">
+    Global logging and error handling for all network requests
+  </Card>
+  <Card title="Error handling" icon="bug">
+    Custom error handler that captures runtime exceptions
+  </Card>
+  <Card title="Configuration service" icon="gear">
+    Centralized configuration loaded at application startup
+  </Card>
+  <Card title="Backend integration" icon="server">
+    Structured services for API communication and caching
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+The application leverages a powerful combination of modern web technologies:
+
+<AccordionGroup>
+  <Accordion title="Core framework">
+    - Angular 21.1.3 with full PWA support
+    - TypeScript 5.9.3 for type safety
+    - RxJS 7.8 for reactive programming
+    - Zone.js for change detection
+  </Accordion>
+  
+  <Accordion title="UI libraries">
+    - Angular Material for component library
+    - Bootstrap 5.3.2 for responsive layout
+    - ng-bootstrap for Angular-specific Bootstrap components
+    - Chart.js and ng2-charts for data visualization
+  </Accordion>
+  
+  <Accordion title="Advanced features">
+    - Three.js for 3D graphics (Tower of Hanoi demo)
+    - Socket.io for real-time communication
+    - html2canvas and jsPDF for document generation
+    - MathJS for mathematical computations
+  </Accordion>
+</AccordionGroup>
+
+## Architecture highlights
+
+### Service-based architecture
+
+The application follows a clean service-based architecture with specialized services:
+
+```
+src/app/_services/
+├── __Utils/
+│   ├── ConfigService/
+│   ├── SpeechService/
+│   ├── SearchService/
+│   └── ChatService/
+├── __AI/
+│   ├── TensorflowService/
+│   ├── OCRService/
+│   └── ComputerVisionService/
+├── __Games/
+│   ├── TetrisService/
+│   └── SudokuService/
+├── AlgorithmService/
+└── BackendService/
+```
+
+### Configuration management
+
+The application uses a configuration service that loads external JSON configuration at startup, enabling environment-specific settings without rebuilding:
+
+```typescript
+provideAppInitializer(() => {
+  const configService = inject(ConfigService);
+  return configService.loadConfig();
+})
+```
+
+## What's next?
+
+<Steps>
+  <Step title="Install dependencies">
+    Follow the [installation guide](/installation) to set up your development environment
+  </Step>
+  <Step title="Run the quick start">
+    Create your first component using our [quick start guide](/quickstart)
+  </Step>
+  <Step title="Explore the demos">
+    Check out the various demo modules to see Angular PWA features in action
+  </Step>
+</Steps>
+
+<Note>
+  This application demonstrates production-ready patterns including global error handling, HTTP logging, and service worker integration. All code examples in this documentation are extracted from the actual source code.
+</Note>

@@ -1,0 +1,544 @@
+---
+title: File generation components
+description: Components for generating and exporting files in PDF, CSV, and XLS formats
+---
+
+The file generation module provides three specialized components for exporting data in different formats: PDF documents, CSV files, and Excel spreadsheets. Each component demonstrates backend integration and file download capabilities.
+
+## Overview
+
+This module includes:
+
+<CardGroup cols={3}>
+  <Card title="PDF generation" icon="file-pdf">
+    Server-side PDF creation with progress tracking
+  </Card>
+  <Card title="CSV export" icon="file-csv">
+    Export data to CSV format from multiple backends
+  </Card>
+  <Card title="XLS export" icon="file-excel">
+    Generate Excel spreadsheets with formatted data
+  </Card>
+</CardGroup>
+
+## PDF generation component
+
+### Component metadata
+
+```typescript
+@Component({
+  selector: 'app-files-generation-pdf',
+  templateUrl: './files-generation-pdf.component.html',
+  styleUrls: ['./files-generation-pdf.component.css'],
+  standalone: false
+})
+```
+
+Location: `files-generation-pdf/files-generation-pdf.component.ts:12-23`
+
+### Key libraries
+
+<CardGroup cols={2}>
+  <Card title="jsPDF" icon="file-pdf">
+    Version: ^2.5.1
+    
+    Backend generates PDFs with custom content
+  </Card>
+  <Card title="html2canvas" icon="image">
+    Version: ^1.4.1
+    
+    Used by PDF service for HTML-to-image conversion
+  </Card>
+</CardGroup>
+
+### Properties
+
+```typescript
+protected progress: number = 0;           // Upload/download progress
+public downloadCaption: string = '';       // Button caption
+public DownloadLink: string = '';          // Generated PDF URL
+protected pdfFileName: string = '';        // Output filename
+@ViewChild('subjectName') subjectName: any; // Input field reference
+```
+
+Location: `files-generation-pdf.component.ts:28-35`
+
+### Methods
+
+#### onSubmit()
+
+Generates a PDF document with the provided subject name.
+
+```typescript
+public onSubmit(): void
+```
+
+Location: `files-generation-pdf.component.ts:68-150`
+
+<Steps>
+  <Step title="Validate input">
+    Checks if subject name is provided
+  </Step>
+  <Step title="Initialize progress">
+    Resets progress indicators and status messages
+  </Step>
+  <Step title="Call backend service">
+    Sends GET request to PDF generation endpoint
+  </Step>
+  <Step title="Track progress">
+    Updates progress based on HttpEventType
+  </Step>
+  <Step title="Parse response">
+    Extracts filename and constructs download URL
+  </Step>
+  <Step title="Enable download">
+    Makes download link available to user
+  </Step>
+</Steps>
+
+<CodeGroup>
+```typescript Progress tracking
+if (event.type === HttpEventType.Sent) 
+  this.progress = 25;
+
+if (event.type === HttpEventType.DownloadProgress) 
+  this.progress = 50;
+
+if (event instanceof HttpResponse) {
+  this.progress = 100;
+  // Parse response and create download link
+}
+```
+
+```typescript Response parsing
+var resultArray = event.body.split("|");
+
+if (resultArray.length > 0) {
+  this.pdfFileName = resultArray[1];
+  var fileUrl = `${this.configService.getConfigValue('baseUrlNetCore')}/wwwroot/output/uploadedfiles/pdf/${this.pdfFileName}`;
+  
+  this.DownloadLink = `${UtilManager.DebugHostingContent(downloadLink_1)}`;
+  this.downloadCaption = '[DOWNLOAD PDF]';
+}
+```
+</CodeGroup>
+
+#### onNewPdf()
+
+Resets the form for a new PDF generation.
+
+```typescript
+public onNewPdf(): void
+```
+
+Location: `files-generation-pdf.component.ts:58-66`
+
+<CodeGroup>
+```typescript Reset state
+this.progress = 0;
+this.status_message.set('[Restart sucessful]');
+this.DownloadLink = '';
+this.pdfFileName = "";
+this.subjectName.nativeElement.value = '';
+```
+</CodeGroup>
+
+## CSV generation component
+
+### Component metadata
+
+```typescript
+@Component({
+  selector: 'app-files-generation-csv',
+  templateUrl: './files-generation-csv.component.html',
+  styleUrls: ['./files-generation-csv.component.css'],
+  standalone: false
+})
+```
+
+Location: `files-generation-csv/files-generation-csv.component.ts:14-25`
+
+### Properties
+
+```typescript
+public csv_dataSource = new MatTableDataSource<PersonEntity>();
+public csv_displayedColumns: string[] = ['id_Column', 'ciudad', 'nombreCompleto'];
+public downloadLink: string = "";
+public downloadCaption: string = "[DOWNLOAD CSV]";
+
+@ViewChild("csv_paginator", {read: MatPaginator}) csv_paginator!: MatPaginator;
+```
+
+Location: `files-generation-csv.component.ts:60-76`
+
+### Multi-backend support
+
+The component supports fetching data from multiple backend technologies:
+
+<Tabs>
+  <Tab title=".NET Core">
+    ```typescript
+    let csv_informeLogRemoto = this.backendService.getInformeRemotoCSV();
+    
+    csv_informeLogRemoto.subscribe({
+      next: (csv_data: string) => { 
+        let jsondata = JSON.parse(csv_data);
+        let recordNumber = jsondata.length;
+        
+        this.status_message.set(`[${recordNumber}] records found`);
+        this.csv_dataSource = new MatTableDataSource<PersonEntity>(jsondata);
+        this.csv_dataSource.paginator = this.csv_paginator;
+      }
+    });
+    ```
+    
+    Location: `files-generation-csv.component.ts:121-149`
+  </Tab>
+  <Tab title="Node.js">
+    ```typescript
+    let csv_informeLogRemoto_NodeJS = this.backendService.getInformeRemotoCSV_NodeJS();
+    
+    csv_informeLogRemoto_NodeJS.subscribe({
+      next: (csv_data_node_js: string) => { 
+        let csv_data_node_js_json = JSON.parse(csv_data_node_js)['recordsets'][0];
+        let recordNumber = csv_data_node_js_json.length;
+        
+        this.csv_dataSource = new MatTableDataSource<PersonEntity>(csv_data_node_js_json);
+        this.csv_dataSource.paginator = this.csv_paginator;
+      }
+    });
+    ```
+    
+    Location: `files-generation-csv.component.ts:153-182`
+  </Tab>
+  <Tab title="SpringBoot/Java">
+    ```typescript
+    let td_informeLogRemoto_SprinbBootJava = this.backendService.getPersonsSprinbBootJava();
+    
+    td_informeLogRemoto_SprinbBootJava.subscribe({
+      next: (td_persons_sprinbboot_java: string) => { 
+        let td_persons_springboot_java_json = JSON.parse(td_persons_sprinbboot_java);
+        
+        this.csv_dataSource = new MatTableDataSource<PersonEntity>(td_persons_springboot_java_json);
+        this.csv_dataSource.paginator = this.csv_paginator;
+      }
+    });
+    ```
+    
+    Location: `files-generation-csv.component.ts:186-216`
+  </Tab>
+  <Tab title="Django/Python">
+    ```typescript
+    let td_Persons_DjangoPython = this.backendService.getPersonsDjangoPython();
+    
+    td_Persons_DjangoPython.subscribe({
+      next: (td_persons_python_django: string) => { 
+        let td_persons_django_pytnon_json = JSON.parse(td_persons_python_django);
+        
+        this.csv_dataSource = new MatTableDataSource<PersonEntity>(td_persons_django_pytnon_json);
+        this.csv_dataSource.paginator = this.csv_paginator;
+      }
+    });
+    ```
+    
+    Location: `files-generation-csv.component.ts:220-250`
+  </Tab>
+</Tabs>
+
+### Methods
+
+#### SetCSVData()
+
+Fetches data from the selected backend and populates the table.
+
+```typescript
+SetCSVData(): void
+```
+
+Location: `files-generation-csv.component.ts:110-255`
+
+<Note>
+The method uses a switch statement based on the selected language/backend index to determine which API endpoint to call.
+</Note>
+
+#### SetCSVLink()
+
+Generates a downloadable CSV file from the current data.
+
+```typescript
+SetCSVLink(): void
+```
+
+Location: `files-generation-csv.component.ts:257-293`
+
+<CodeGroup>
+```typescript Generate CSV link
+let csv_link = this.backendService.getCSVLink();
+
+csv_link.subscribe({
+  next: (p_csv_link: string) => { 
+    let fileUrl = `${this.configService.getConfigValue('baseUrlNetCore')}${p_csv_link}`;
+    this.downloadLink = fileUrl.replace(/"/g, '');
+    this.status_message.set("CSV file genetated correctly");
+  },
+  complete: () => {
+    this.downloadCaption = "[Donwload CSV]";
+  }
+});
+```
+</CodeGroup>
+
+#### rf_newSearch()
+
+Resets the form to initial state.
+
+```typescript
+rf_newSearch(): void
+```
+
+Location: `files-generation-csv.component.ts:298-326`
+
+## XLS generation component
+
+### Component metadata
+
+```typescript
+@Component({
+  selector: 'app-files-generation-xls',
+  templateUrl: './files-generation-xls.component.html',
+  styleUrls: ['./files-generation-xls.component.css'],
+  standalone: false
+})
+```
+
+Location: `files-generation-xls/files-generation-xls.component.ts:15-26`
+
+### Properties
+
+```typescript
+public td_dataSource = new MatTableDataSource<LogEntry>();
+public rf_displayedColumns: string[] = ['id_Column', 'pageName', 'accessDate', 'ipValue'];
+public td_ExcelDownloadLink: string = "#";
+public td_buttonCaption_xls: string = "[Generate XLS]";
+
+@ViewChild("td_paginator", {read: MatPaginator}) td_paginator!: MatPaginator;
+```
+
+Location: `files-generation-xls.component.ts:58-72`
+
+### Methods
+
+#### td_update()
+
+Fetches log entries from the selected backend.
+
+```typescript
+td_update(td_searchCriteria: SearchCriteria): void
+```
+
+Location: `files-generation-xls.component.ts:153-320`
+
+**Parameters:**
+- `td_searchCriteria` - Search parameters including date range and row count
+
+<CodeGroup>
+```typescript Date formatting
+td_searchCriteria.P_FECHA_INICIO_STR = this.GetFormattedDate(td_searchCriteria.P_FECHA_INICIO, 0);
+td_searchCriteria.P_FECHA_FIN_STR = this.GetFormattedDate(td_searchCriteria.P_FECHA_FIN, 0);
+```
+
+```typescript Backend selection
+let selectedIndex: number = this._languajeList.nativeElement.options.selectedIndex;
+
+switch (selectedIndex) {
+  case 1: // C#
+  case 2: // Node.js
+  case 3: // SpringBoot/Java
+  case 4: // Django/Python
+}
+```
+</CodeGroup>
+
+#### td_GenerarInformeXLS()
+
+Generates an Excel file from the current data.
+
+```typescript
+td_GenerarInformeXLS(_searchCriteria: SearchCriteria): void
+```
+
+Location: `files-generation-xls.component.ts:327-372`
+
+<CodeGroup>
+```typescript Excel generation
+let td_excelFileName = this.backendService.getInformeExcel(this._model);
+
+this.td_buttonCaption_xls = "[Generating please wait ...]";
+this.status_message.set("[Generating please wait ...]");
+
+td_excelFileName.subscribe({
+  next: (_excelFileName: string) => { 
+    let urlFile = UtilManager.DebugHostingContent(_excelFileName); 
+    
+    this.td_ExcelDownloadLink = `${this.configService.getConfigValue('baseUrlNetCore')}/wwwroot/xlsx/${urlFile}`;
+    this.status_message.set("[XLS file generated correctly]");
+    this.td_textStatus_xls = "[Download XLS File]";
+  },
+  complete: () => {
+    this.td_buttonCaption_xls = "[Generate XLS]";
+  }
+});
+```
+</CodeGroup>
+
+#### td_newSearch()
+
+Resets the component to its initial state.
+
+```typescript
+td_newSearch(): void
+```
+
+Location: `files-generation-xls.component.ts:105-130`
+
+## Common features
+
+All file generation components share these characteristics:
+
+<CardGroup cols={2}>
+  <Card title="Reactive forms" icon="list-check">
+    Form validation with template-driven and reactive approaches
+  </Card>
+  <Card title="Material table" icon="table">
+    Data display with pagination using MatTableDataSource
+  </Card>
+  <Card title="Loading states" icon="spinner">
+    Progress indicators and status messages
+  </Card>
+  <Card title="Error handling" icon="triangle-exclamation">
+    Comprehensive error handling with user feedback
+  </Card>
+</CardGroup>
+
+## Usage examples
+
+### Importing components
+
+```typescript
+import { FilesGenerationPDFComponent } from './files-generation-pdf/files-generation-pdf.component';
+import { FilesGenerationCSVComponent } from './files-generation-csv/files-generation-csv.component';
+import { FilesGenerationXLSComponent } from './files-generation-xls/files-generation-xls.component';
+
+@NgModule({
+  declarations: [
+    FilesGenerationPDFComponent,
+    FilesGenerationCSVComponent,
+    FilesGenerationXLSComponent
+  ],
+  imports: [
+    MatTableModule,
+    MatPaginatorModule,
+    ReactiveFormsModule,
+    // ... other imports
+  ]
+})
+```
+
+### Using in templates
+
+<CodeGroup>
+```html PDF generation
+<app-files-generation-pdf></app-files-generation-pdf>
+```
+
+```html CSV export
+<app-files-generation-csv></app-files-generation-csv>
+```
+
+```html XLS export
+<app-files-generation-xls></app-files-generation-xls>
+```
+</CodeGroup>
+
+## Data models
+
+### PersonEntity
+
+Used by CSV component:
+
+```typescript
+interface PersonEntity {
+  id_Column: number;
+  ciudad: string;
+  nombreCompleto: string;
+}
+```
+
+### LogEntry
+
+Used by XLS component:
+
+```typescript
+interface LogEntry {
+  id_Column: number;
+  pageName: string;
+  accessDate: string;
+  ipValue: string;
+}
+```
+
+### SearchCriteria
+
+Used by both CSV and XLS components:
+
+```typescript
+class SearchCriteria {
+  constructor(
+    public P_DATA_SOURCE_ID: string,
+    public P_ID_TIPO_LOG: string,
+    public P_ROW_NUM: string,
+    public P_FECHA_INICIO: string,
+    public P_FECHA_FIN: string,
+    public P_FECHA_INICIO_STR: string,
+    public P_FECHA_FIN_STR: string
+  )
+}
+```
+
+## Backend integration
+
+All components interact with the BackendService:
+
+<Tabs>
+  <Tab title="PDF">
+    ```typescript
+    // Backend PDF generation
+    this.pdfService.GetPDF(subjectName)
+    ```
+  </Tab>
+  <Tab title="CSV">
+    ```typescript
+    // Get data
+    this.backendService.getInformeRemotoCSV()
+    this.backendService.getInformeRemotoCSV_NodeJS()
+    
+    // Generate file
+    this.backendService.getCSVLink()
+    ```
+  </Tab>
+  <Tab title="XLS">
+    ```typescript
+    // Get data
+    this.backendService.getLogRemoto(searchCriteria)
+    this.backendService.getLogRemotoNodeJS(searchCriteria)
+    
+    // Generate file
+    this.backendService.getInformeExcel(searchCriteria)
+    ```
+  </Tab>
+</Tabs>
+
+## Related components
+
+- [Chart component](/components/chart) - Chart visualization with PDF export
+- [Speech panel](/components/speech-panel) - Voice feedback integration

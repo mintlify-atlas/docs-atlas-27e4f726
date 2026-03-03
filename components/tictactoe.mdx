@@ -1,0 +1,529 @@
+---
+title: Tic Tac Toe
+description: Classic Tic Tac Toe game with minimax AI opponent
+---
+
+## Overview
+
+The Tic Tac Toe implementation provides both a classic player-vs-computer game and an AI-vs-AI variant. The game uses the minimax algorithm for unbeatable AI gameplay and includes configurable AI modes with temperature controls.
+
+## Components
+
+### GameTicTacToeComponent
+
+**Selector:** `app-game-tictactoe`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-tictactoe/game-tictactoe.component.ts`
+
+Container component for the standard player-vs-computer game.
+
+### BoardComponent
+
+**Selector:** `app-board`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-tictactoe/board/board.component.ts`
+
+Manages game board state and player interactions.
+
+### SquareComponent
+
+**Selector:** `app-square`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-tictactoe/square/square.component.ts`
+
+Individual cell component for the game board.
+
+### TicTacToeBoardAiComponent
+
+**Selector:** `app-tic-tac-toe-board-ai`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/tic-tac-toe-board-ai/tic-tac-toe-board-ai.component.ts`
+
+AI-vs-AI game with multiple AI strategies and animated gameplay.
+
+## Key features
+
+### Player vs Computer
+- **Minimax AI** - Unbeatable computer opponent using minimax algorithm
+- **Choice of starting player** - Computer or player can start first
+- **Win detection** - Automatic detection of wins and draws
+- **Speech feedback** - Audible game state announcements
+
+### AI vs AI variant
+- **Multiple AI modes** - Expert, Creative, MinMax, Random Player, TensorFlow
+- **Temperature control** - Adjustable creativity parameter (0.0 - 2.0)
+- **Animated playback** - Watch games play out with 0.8s move intervals
+- **Game history** - Step-through complete game sequences
+
+## TicTacToeEngine
+
+**Location:** `src/app/_engines/tictactoe.engine.ts`
+
+### Properties
+
+```typescript
+// Constants
+COMPUTER: number = 1        // Computer player ID
+HUMAN: number = 2           // Human player ID  
+COMPUTERMOVE: 'O'          // Computer symbol
+HUMANMOVE: 'X'             // Player symbol
+
+// Game state
+squares: ('X' | 'O' | null)[]  // Board state (9 cells)
+winner: ('X' | 'O' | null)     // Game winner
+message: signal<string>         // Status message (Angular signal)
+```
+
+### Methods
+
+#### Game control
+
+```typescript
+initialise(): void
+// Resets board to empty state
+// Clears winner and moves
+// Sets initial game state
+
+makeMove(n: number): void
+// Makes player move at position n (0-8)
+// Triggers computer move if game continues
+// Checks for winner after each move
+
+makeHumanMove(n: number): void
+// Executes player move
+// Updates board and squares array
+
+makeComputerMove(): void  
+// Executes AI move using bestMove()
+// Updates board state
+```
+
+#### AI logic
+
+```typescript
+minimax(board: ('X' | 'O' | null)[][], depth: number, isAI: boolean): number
+// Minimax algorithm implementation
+// Returns:
+//   +1 if AI wins
+//   -1 if player wins  
+//    0 if draw
+// Recursively evaluates all possible moves
+
+bestMove(board: ('X' | 'O' | null)[][], moveIndex: number): number
+// Finds optimal move position (0-8)
+// Uses minimax to evaluate all empty cells
+// Returns best move for current player
+```
+
+#### Win detection
+
+```typescript
+gameOver(board: ('X' | 'O' | null)[][]): boolean
+// Checks if game has ended (win or draw)
+
+rowCrossed(board: ('X' | 'O' | null)[][]): boolean
+// Checks horizontal wins
+
+columnCrossed(board: ('X' | 'O' | null)[][]): boolean
+// Checks vertical wins
+
+diagonalCrossed(board: ('X' | 'O' | null)[][]): boolean
+// Checks diagonal wins
+```
+
+## Usage examples
+
+### Basic player vs computer
+
+```html
+<app-game-tictactoe></app-game-tictactoe>
+```
+
+### Board component with controls
+
+```html
+<div class="game-container">
+  <!-- Start options -->
+  <select #_SourceList *ngIf="!showBoard">
+    <option [value]="ticTacToeEngine.COMPUTER">[Computer]</option>
+    <option [value]="ticTacToeEngine.HUMAN">[Player]</option>
+  </select>
+  
+  <button (click)="startGame()" *ngIf="IsNewGame">
+    Start Game
+  </button>
+  
+  <!-- Game board -->
+  <div class="board" *ngIf="showBoard">
+    <app-square
+      *ngFor="let square of ticTacToeEngine.squares; let i = index"
+      [value]="square"
+      (clickEvent)="makeMove(i)">
+    </app-square>
+  </div>
+  
+  <!-- Status -->
+  <div class="status">
+    {{ ticTacToeEngine.message() }}
+  </div>
+  
+  <button (click)="newGame()">New Game</button>
+</div>
+```
+
+### Square component
+
+```html
+<button 
+  class="square" 
+  [class.x]="value === 'X'"
+  [class.o]="value === 'O'"
+  (click)="onClick()">
+  {{ value }}
+</button>
+```
+
+```typescript
+@Component({
+  selector: 'app-square',
+  templateUrl: './square.component.html',
+  styleUrls: ['./square.component.css']
+})
+export class SquareComponent {
+  @Input() value: 'X' | 'O' | null = null;
+  @Output() clickEvent = new EventEmitter<void>();
+  
+  onClick(): void {
+    this.clickEvent.emit();
+  }
+}
+```
+
+### Using the engine in a component
+
+```typescript
+import { TicTacToeEngine } from 'src/app/_engines/tictactoe.engine';
+
+export class BoardComponent implements OnInit {
+  constructor(public ticTacToeEngine: TicTacToeEngine) {
+    // Set up effect to react to message changes
+    effect(() => {
+      if (this.ticTacToeEngine.message()) {
+        this.speechService.speakTextCustom(
+          this.ticTacToeEngine.message()
+        );
+      }
+    });
+  }
+  
+  ngOnInit(): void {
+    this.ticTacToeEngine.initialise();
+  }
+  
+  makeMove(n: number): void {
+    this.ticTacToeEngine.makeMove(n);
+  }
+  
+  newGame(): void {
+    this.ticTacToeEngine.initialise();
+  }
+}
+```
+
+## AI variant usage
+
+### Component setup
+
+```html
+<div class="ai-game">
+  <!-- AI mode selection -->
+  <select (change)="onAiModeChange($event)" [value]="aiMode">
+    <option value="0">Expert</option>
+    <option value="1">Creative</option>
+    <option value="2">Min Max</option>
+    <option value="3">Random Player</option>
+    <option value="4">TensorFlow</option>
+  </select>
+  
+  <!-- Temperature control -->
+  <label>
+    Temperature: {{ temperature }}
+    <input 
+      type="range" 
+      min="0" 
+      max="2" 
+      step="0.1"
+      [value]="temperature"
+      (input)="onTempChange($event)" />
+  </label>
+  
+  <!-- Game board -->
+  <div class="board">
+    <div 
+      *ngFor="let cell of gameHistory[currentStep]; let i = index"
+      class="cell" 
+      [class]="getCellClass(cell, i)">
+      {{ getCellSymbol(cell) }}
+    </div>
+  </div>
+  
+  <!-- Game info -->
+  <div class="info">
+    <p>Move: {{ currentStep }} / {{ gameHistory.length - 1 }}</p>
+    <p>{{ winner }}</p>
+  </div>
+  
+  <!-- Controls -->
+  <button (click)="onReplay()" [disabled]="loading">
+    Replay
+  </button>
+</div>
+```
+
+### Component logic
+
+```typescript
+export class TicTacToeBoardAiComponent implements OnInit {
+  gameHistory: number[][] = [];
+  currentStep = 0;
+  winner = 'In Progress';
+  aiMode = 0;  // Default: Expert
+  temperature = 1.5;
+  
+  loadGame() {
+    const url = `${this.baseUrl}/api/tictactoe/play?aiMode=${this.aiMode}&temperature=${this.temperature}`;
+    
+    fetch(url)
+      .then(response => response.json())
+      .then((data: TicTacToeResponse) => {
+        this.gameHistory = data.history;
+        this.animateGame();
+      });
+  }
+  
+  animateGame() {
+    this.currentStep = 0;
+    const interval = setInterval(() => {
+      if (this.currentStep < this.gameHistory.length - 1) {
+        this.currentStep++;
+        this.getCurrentWinner();
+      } else {
+        clearInterval(interval);
+      }
+    }, 800);  // 0.8 seconds per move
+  }
+  
+  getCellSymbol(cell: number): string {
+    return cell === 1 ? 'X' : cell === -1 ? 'O' : '';
+  }
+  
+  getCurrentWinner(): string {
+    const board = this.gameHistory[this.currentStep];
+    const wins = [
+      [0,1,2], [3,4,5], [6,7,8],  // rows
+      [0,3,6], [1,4,7], [2,5,8],  // columns
+      [0,4,8], [2,4,6]            // diagonals
+    ];
+    
+    for (const [a,b,c] of wins) {
+      if (board[a] !== 0 && 
+          board[a] === board[b] && 
+          board[b] === board[c]) {
+        this.winner = `Winner: ${board[a] === 1 ? 'X' : 'O'}`;
+        return this.winner;
+      }
+    }
+    
+    if (board.every(cell => cell !== 0)) {
+      this.winner = 'Winner: Draw';
+    }
+    
+    return this.winner;
+  }
+}
+```
+
+## AI modes
+
+<Tabs>
+  <Tab title="Expert Mode">
+    **Mode 0: Expert**
+    
+    Pure minimax algorithm with optimal play. Makes the mathematically best move every time. Games typically end in draws when both players use this mode.
+    
+    ```typescript
+    aiMode = 0;
+    temperature = 1.0;  // Not used in expert mode
+    ```
+  </Tab>
+  
+  <Tab title="Creative Mode">
+    **Mode 1: Creative**
+    
+    Introduces randomness into move selection based on temperature parameter. Higher temperatures lead to more exploratory play.
+    
+    ```typescript
+    aiMode = 1;
+    temperature = 1.5;  // Range: 0.0-2.0
+    // 0.0 = deterministic
+    // 2.0 = highly random
+    ```
+  </Tab>
+  
+  <Tab title="MinMax Mode">
+    **Mode 2: MinMax**
+    
+    Standard minimax without optimizations. Shows algorithm behavior clearly.
+    
+    ```typescript
+    aiMode = 2;
+    ```
+  </Tab>
+  
+  <Tab title="Random Mode">
+    **Mode 3: Random Player**
+    
+    Completely random move selection. Useful for testing and demonstration.
+    
+    ```typescript
+    aiMode = 3;
+    ```
+  </Tab>
+  
+  <Tab title="TensorFlow Mode">
+    **Mode 4: TensorFlow**
+    
+    Neural network-based player (if backend supports it). Learns patterns from training.
+    
+    ```typescript
+    aiMode = 4;
+    ```
+  </Tab>
+</Tabs>
+
+## Backend API
+
+### AI game endpoint
+
+```typescript
+// GET request for AI vs AI game
+GET /api/tictactoe/play?aiMode={mode}&temperature={temp}
+
+Response: {
+  finalBoard: number[],      // Final board state
+  moves: number[],           // Sequence of moves
+  winner: string,            // 'X', 'O', or 'Draw'
+  moveCount: number,         // Total moves made
+  historyCount: number,      // Number of history states
+  history: number[][]        // Board state after each move
+}
+```
+
+## Minimax algorithm explanation
+
+The minimax algorithm explores the game tree to find optimal moves:
+
+```typescript
+// Pseudocode
+function minimax(board, depth, isMaximizing):
+  if game_over(board):
+    return evaluate(board)  // +1, -1, or 0
+    
+  if isMaximizing:
+    bestScore = -infinity
+    for each empty cell:
+      place AI marker
+      score = minimax(board, depth+1, false)
+      remove marker
+      bestScore = max(bestScore, score)
+    return bestScore
+  else:
+    bestScore = +infinity
+    for each empty cell:
+      place player marker
+      score = minimax(board, depth+1, true)
+      remove marker
+      bestScore = min(bestScore, score)
+    return bestScore
+```
+
+<Note>
+The minimax implementation in this component is **unbeatable**. In expert mode, the best possible outcome against the AI is a draw.
+</Note>
+
+## Game messages
+
+| Message | Trigger |
+|---------|--------|
+| `[COMPUTER WON]` | AI achieves three in a row |
+| `[PLAYER WON]` | Player achieves three in a row |
+| `[DRAW]` | All cells filled, no winner |
+| `Winner: X` | X player wins (AI mode) |
+| `Winner: O` | O player wins (AI mode) |
+| `Winner: Draw` | Game ends in draw (AI mode) |
+
+## Styling tips
+
+```css
+/* Board layout */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  max-width: 300px;
+}
+
+/* Square styling */
+.square {
+  aspect-ratio: 1;
+  font-size: 2rem;
+  font-weight: bold;
+  border: 2px solid #333;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.square:hover {
+  background: #f0f0f0;
+}
+
+.square.x {
+  color: #e74c3c;
+}
+
+.square.o {
+  color: #3498db;
+}
+
+/* AI board cells */
+.cell {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.x-cell {
+  color: #e74c3c;
+  background: #ffebee;
+}
+
+.o-cell {
+  color: #3498db;
+  background: #e3f2fd;
+}
+
+.empty-cell {
+  background: #f5f5f5;
+}
+```
+
+## Related components
+
+- [Sudoku](/components/sudoku) - Number puzzle game
+- [Tetris](/components/tetris) - Block-stacking game with AI
+- [Hanoi](/components/hanoi) - Tower of Hanoi puzzle

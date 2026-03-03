@@ -1,0 +1,300 @@
+---
+title: Creating and using components
+description: Learn how to create and use components in Angular 21 with signals, standalone components, and modern patterns
+---
+
+## Overview
+
+Components are the building blocks of Angular applications. This guide shows you how to create components using Angular 21 patterns, including signals, the `inject()` function, and standalone components.
+
+## Component architecture
+
+The Angular PWA Demo uses two types of components:
+
+<CardGroup cols={2}>
+  <Card title="Standalone components" icon="cube">
+    Self-contained components that declare their own dependencies
+  </Card>
+  <Card title="Module-based components" icon="cubes">
+    Traditional components registered in NgModule
+  </Card>
+</CardGroup>
+
+## Creating a standalone component
+
+Standalone components are the modern approach in Angular 21. They don't require NgModule registration.
+
+<Steps>
+  <Step title="Generate the component">
+    Use the Angular CLI to create a new component:
+    ```bash
+    ng generate component _components/my-component --standalone
+    ```
+  </Step>
+
+  <Step title="Configure the component decorator">
+    Set `standalone: true` and declare imports:
+    ```typescript
+    import { Component } from '@angular/core';
+    import { RouterLink } from '@angular/router';
+
+    @Component({
+      selector: 'app-my-component',
+      templateUrl: './my-component.component.html',
+      styleUrl: './my-component.component.css',
+      standalone: true,
+      imports: [RouterLink]
+    })
+    export class MyComponent {
+      // Component logic
+    }
+    ```
+  </Step>
+
+  <Step title="Use the component">
+    Import it directly in parent components or routes:
+    ```typescript
+    import { MyComponent } from './_components/my-component/my-component.component';
+
+    @Component({
+      imports: [MyComponent],
+      standalone: true
+    })
+    export class ParentComponent {}
+    ```
+  </Step>
+</Steps>
+
+## Real-world example: Speech panel component
+
+Here's a production example from the codebase at `src/app/_components/speech-panel/speech-panel.component.ts:1`:
+
+```typescript
+import { Component, EventEmitter, Output, Input } from '@angular/core';
+import { SpeechService } from 'src/app/_services/__Utils/SpeechService/speech.service';
+
+@Component({
+  selector: 'app-speech-panel',
+  templateUrl: './speech-panel.component.html',
+  styleUrl: './speech-panel.component.css',
+  standalone: true
+})
+export class SpeechPanelComponent {
+  ListeningButtonIconOn: string = './assets/images/mic_on.gif';
+  ListeningButtonIconOff: string = './assets/images/mic_off.gif';
+  SpeakerIcon: string = './assets/images/speaker_on.gif';
+  clearFormIcon: string = './assets/images/clearForm.gif';
+  
+  @Output() clickEventSpeak = new EventEmitter<string>();
+  @Output() clickEventClearText = new EventEmitter<void>();
+
+  constructor(public speechService: SpeechService) {}
+
+  speakText(): void {
+    this.clickEventSpeak.emit(this.speechService.speakText());
+  }
+
+  clearText(): void {
+    this.clickEventClearText.emit();
+  }
+}
+```
+
+### Key features demonstrated
+
+- **Standalone component**: No NgModule required
+- **Service injection**: Constructor-based DI for services
+- **Event emitters**: Parent-child communication with `@Output()`
+- **Type safety**: Proper TypeScript typing for events
+
+## Using signals for reactive state
+
+Angular 21 introduces signals for reactive state management. Here's how it's used in the root component at `src/app/app.component.ts:1`:
+
+```typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { ConfigService } from './_services/__Utils/ConfigService/config.service';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css'],
+  standalone: false
+})
+export class AppComponent implements OnInit {
+  // Modern inject() function instead of constructor DI
+  private readonly _configService = inject(ConfigService);
+  private readonly titleService = inject(Title);
+
+  // Reactive signals
+  public readonly title = signal<string>('');
+  public readonly appBrand = signal<string>('');
+  public readonly appVersion = signal<string>('');
+
+  ngOnInit(): void {
+    this.initializeConfig();
+  }
+
+  private initializeConfig(): void {
+    const brand = this._configService.getConfigValue('appBrand') ?? 'App';
+    const version = this._configService.getConfigValue('appVersion') ?? '1.0.0';
+
+    // Update signals
+    this.appBrand.set(brand);
+    this.appVersion.set(version);
+    this.title.set(brand);
+
+    this.titleService.setTitle(`${brand} - ${version}`);
+  }
+}
+```
+
+<Tip>
+  Signals provide better performance than traditional change detection and make reactive patterns more explicit.
+</Tip>
+
+## Component with dependency injection
+
+The landing component shows advanced patterns including `@Input()` and async initialization at `src/app/_components/landing/landing.component.ts:1`:
+
+```typescript
+import { AfterViewInit, Component, Input } from '@angular/core';
+import { Params, RouterLink } from '@angular/router';
+import { ConfigService } from 'src/app/_services/__Utils/ConfigService/config.service';
+
+@Component({
+  selector: 'app-landing',
+  templateUrl: './landing.component.html',
+  styleUrl: './landing.component.css',
+  imports: [RouterLink],
+  standalone: true
+})
+export class LandingComponent implements AfterViewInit {
+  public _pages_nested: any[] = [];
+  
+  @Input() LandingPage?: string = undefined;
+
+  constructor(public configService: ConfigService) {}
+
+  ngAfterViewInit(): void {
+    this.loadLandingPage();
+  }
+
+  loadLandingPage() {
+    this.configService._loadMainPages().then(() => {
+      const pageData = _environment.mainPageListDictionary?.[PAGE_ANGULAR_DEMO_LANDING];
+      const pageName = this.LandingPage ? this.LandingPage : pageData?.page_name;
+
+      if (pageName && typeof pageName === 'string') {
+        console.log(`Selected Landing Page: ${pageName}`);
+        
+        if (_environment.mainPageListDictionary[pageName].pages_nested !== null) {
+          this._pages_nested = _environment.mainPageListDictionary[pageName].pages_nested;
+          this._pages_nested = this._pages_nested.map(page => ({
+            ...page,
+            queryParamsObj: this.parseQueryParams(page.queryParams)
+          }));
+        }
+      }
+    });
+  }
+
+  parseQueryParams(str: string): Params {
+    if (typeof str !== 'string' || !str.trim()) {
+      return {};
+    }
+    const cleanStr = str.replace(/{|}/g, '').replace(/['"], /g, '').trim();
+    return cleanStr.split(',').reduce((params, pair) => {
+      const [key, value] = pair.split(':').map(s => s.trim());
+      if (key && value) {
+        params[key] = value;
+      }
+      return params;
+    }, {} as Params);
+  }
+}
+```
+
+### Key patterns
+
+- **Input properties**: Accept data from parent components
+- **Lifecycle hooks**: `AfterViewInit` for post-render initialization
+- **Async operations**: Promise-based data loading
+- **Data transformation**: Processing configuration data
+
+## Module-based components
+
+For traditional module-based components, set `standalone: false` at `src/app/_components/search/search.component.ts:7`:
+
+```typescript
+import { Component, QueryList, ViewChildren } from '@angular/core';
+import { Observable } from 'rxjs';
+import { SearchService } from 'src/app/_services/__Utils/SearchService/search.service';
+
+@Component({
+  selector: 'app-search-custom',
+  templateUrl: './search.component.html',
+  styleUrl: './search.component.css',
+  standalone: false
+})
+export class SearchComponent {
+  public __pages!: Observable<_BaseModel[]>;
+  public __total!: Observable<number>;
+  
+  @ViewChildren(BaseSortableHeader) _headers: QueryList<BaseSortableHeader> | undefined;
+
+  constructor(public searchService: SearchService) {
+    this.__pages = this.searchService.Pagelist;
+    this.__total = this.searchService.total;
+  }
+
+  onSort({ _column, _direction }: _BaseSortEvent) {
+    this._headers?.forEach((__header) => {
+      if (__header.sortable !== _column) {
+        __header.direction = '';
+      }
+    });
+    this.searchService.sortColumn = _column;
+    this.searchService.sortDirection = _direction;
+  }
+}
+```
+
+<Warning>
+  Module-based components must be declared in an NgModule's `declarations` array.
+</Warning>
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use signals for reactive state">
+    Prefer signals over BehaviorSubject for component state. Signals provide better performance and type safety.
+  </Accordion>
+
+  <Accordion title="Prefer standalone components">
+    Use standalone components for new development. They're simpler and don't require NgModule boilerplate.
+  </Accordion>
+
+  <Accordion title="Use inject() for dependency injection">
+    The `inject()` function is more flexible than constructor injection and works outside constructors.
+  </Accordion>
+
+  <Accordion title="Keep components focused">
+    Each component should have a single responsibility. Extract complex logic into services.
+  </Accordion>
+
+  <Accordion title="Use OnPush change detection">
+    For better performance, use `ChangeDetectionStrategy.OnPush` with signals.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Services guide" icon="gear" href="/guides/services">
+    Learn about services and dependency injection
+  </Card>
+  <Card title="Configuration guide" icon="sliders" href="/guides/configuration">
+    Configure your application
+  </Card>
+</CardGroup>

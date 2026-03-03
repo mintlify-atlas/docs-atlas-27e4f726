@@ -1,0 +1,355 @@
+---
+title: Dijkstra algorithm component
+description: Interactive visualization of Dijkstra's shortest path algorithm with multi-language backend support
+---
+
+## Overview
+
+The `AlgorithmDijkstraComponent` provides an interactive visualization of Dijkstra's shortest path algorithm. It generates random graphs and calculates the shortest path between vertices using backend services in C#, C++, or Java (SpringBoot).
+
+## Component properties
+
+### Configuration properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `vertexMax` | `number` | `9` | Maximum number of vertices in the graph |
+| `rectSize` | `number` | `10` | Size of each grid rectangle in pixels |
+| `screenSize` | `number` | `250` | Canvas screen size in pixels |
+| `strokeStyleCafe` | `string` | `"#654321"` | Brown stroke color for drawing vertices |
+| `strokeStyleVerde` | `string` | `"#006400"` | Green stroke color for drawing edges |
+| `strokeStyleRed` | `string` | `"#ff0000"` | Red stroke color for highlighting shortest path |
+
+### State properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `selectedIndex` | `number` | Currently selected distance list index |
+| `selectedIndexLanguage` | `number` | Currently selected programming language index |
+| `getGraphIdle` | `boolean` | Indicates if graph generation is in progress |
+| `PointListHidden` | `string` | Serialized vertex coordinates |
+| `MatrixListHidden` | `string` | Serialized adjacency matrix |
+
+### ViewChild references
+
+| Reference | Description |
+|-----------|-------------|
+| `c_canvas` | Canvas element for graph visualization |
+| `divCanvas_Pdf` | Container for PDF export |
+| `_vertexSizeList` | Dropdown for vertex count selection |
+| `_sourcePointList` | Dropdown for source point selection |
+| `_distanceList` | Dropdown showing distances from source |
+| `_languajeList` | Dropdown for backend language selection |
+
+## Key methods
+
+### Graph generation
+
+#### `_GetGraph()`
+
+Generates a random graph using the selected backend language and visualizes it on the canvas.
+
+```typescript
+_GetGraph(): void
+```
+
+**Behavior:**
+- Validates language selection
+- Calls backend service based on selected language (C#, C++, or Java)
+- Parses response containing points, adjacency matrix, and distance calculations
+- Renders the graph with vertices and edges
+
+**Example usage:**
+```html
+<input class="btn btn-primary" 
+       type="button" 
+       value="[GENERATE]" 
+       (click)="this._GetGraph()"
+       [disabled]="getGraphIdle">
+```
+
+### Visualization methods
+
+#### `DrawGrid()`
+
+Draws a grid background on the canvas for coordinate reference.
+
+```typescript
+DrawGrid(): void
+```
+
+Source: `algorithm-dijkstra.component.ts:323`
+
+#### `DrawPoint(pointName, x, y, strokeStyle)`
+
+Draws a single vertex on the canvas with its label.
+
+```typescript
+DrawPoint(pointName: string, x: number, y: number, strokeStyle: string): void
+```
+
+**Parameters:**
+- `pointName` - Label for the vertex (typically the vertex index)
+- `x` - X coordinate (scaled by `rectSize`)
+- `y` - Y coordinate (scaled by `rectSize`)
+- `strokeStyle` - Color for the vertex marker
+
+Source: `algorithm-dijkstra.component.ts:346`
+
+#### `DrawPoints(points, strokeStyle)`
+
+Draws all vertices in the graph.
+
+```typescript
+DrawPoints(points: string[], strokeStyle: string): void
+```
+
+#### `DrawLine(x1, y1, x2, y2)`
+
+Draws an edge between two vertices.
+
+```typescript
+DrawLine(x1: number, y1: number, x2: number, y2: number): void
+```
+
+#### `DrawLines(pointArray, matrixArray, strokeStyle, drawingSubSet)`
+
+Draws all edges in the graph based on the adjacency matrix.
+
+```typescript
+DrawLines(pointArray: string[], matrixArray: string[], strokeStyle: string, drawingSubSet: Boolean): void
+```
+
+**Parameters:**
+- `pointArray` - Array of vertex coordinates
+- `matrixArray` - Adjacency matrix representing edge weights
+- `strokeStyle` - Color for the edges
+- `drawingSubSet` - If `true`, only draws edges that are part of the shortest path
+
+### Control methods
+
+#### `_ResetControls()`
+
+Resets the component to its initial state.
+
+```typescript
+_ResetControls(): void
+```
+
+**Behavior:**
+- Clears graph data
+- Resets distance list
+- Clears status message
+- Redraws empty grid
+
+Source: `algorithm-dijkstra.component.ts:197`
+
+#### `_distanceListChange()`
+
+Handles selection changes in the distance dropdown, highlighting the shortest path.
+
+```typescript
+_distanceListChange(): void
+```
+
+**Behavior:**
+- Parses the selected distance entry
+- Redraws the graph
+- Highlights the shortest path in red
+
+Source: `algorithm-dijkstra.component.ts:133`
+
+#### `_GetPDF()`
+
+Generates a PDF export of the current graph visualization.
+
+```typescript
+_GetPDF(): void
+```
+
+Source: `algorithm-dijkstra.component.ts:567`
+
+## Backend integration
+
+The component supports multiple backend implementations:
+
+### C# (.NET Core)
+
+```typescript
+randomVertexInfo = this.algorithmService.getRandomVertex(_vertexSize, _sourcePoint);
+```
+
+### C++
+
+```typescript
+randomVertexInfo = this.algorithmService.getRandomVertexCpp(_vertexSize, _sourcePoint);
+```
+
+### Java (SpringBoot)
+
+```typescript
+randomVertexInfo = this.algorithmService.getRandomVertexSpringBoot(_vertexSize, _sourcePoint);
+```
+
+Source: `algorithm-dijkstra.component.ts:232`
+
+## Response format
+
+The backend returns a string with three sections separated by `■`:
+
+1. **Points**: Vertex coordinates in format `[x,y]|[x,y]|...`
+2. **Matrix**: Adjacency matrix in format `{w1,w2,...}|{w1,w2,...}|...`
+3. **Distances**: Shortest paths from source in format `vertex-distance-path`
+
+**Example:**
+```
+[11,7]|[3,21]|[22,11]■{0,16,0}|{16,0,21}|{0,21,0}■01<[14;2]>-26-(0;7)(7;6)(6;1)
+```
+
+## Algorithm explanation
+
+### Dijkstra's shortest path algorithm
+
+Dijkstra's algorithm finds the shortest path between a source vertex and all other vertices in a weighted graph.
+
+**How it works:**
+
+1. Initialize distances from source to all vertices as infinite, except the source itself (0)
+2. Mark all vertices as unvisited
+3. Select the unvisited vertex with the smallest distance
+4. For each neighbor, calculate the distance through the current vertex
+5. Update the neighbor's distance if a shorter path is found
+6. Mark the current vertex as visited
+7. Repeat until all vertices are visited
+
+**Time complexity:** O(V²) or O(E + V log V) with a priority queue
+
+**Space complexity:** O(V)
+
+<Note>
+Dijkstra's algorithm only works with non-negative edge weights. For graphs with negative weights, use the Bellman-Ford algorithm instead.
+</Note>
+
+## Usage example
+
+### Template
+
+```html
+<div class="content">
+  <app-base-reference></app-base-reference>
+  <hr />
+  
+  <!-- Canvas visualization -->
+  <div align="center">
+    <canvas #c_canvas width="250px" height="250px"></canvas>
+  </div>
+  
+  <hr />
+  
+  <!-- Language selection -->
+  <div class="form-group">
+    <label>BACKEND:</label>
+    <select #_languajeList>
+      @for (_languageName of __languajeList; track _languageName) {
+        <option [value]="_languageName._index"
+                [selected]="_languageName._selected">
+          {{_languageName._value}}
+        </option>
+      }
+    </select>
+  </div>
+  
+  <!-- Vertex count -->
+  <div class="form-group">
+    <label>Points Amount:</label>
+    <select #_vertexSizeList disabled="disabled">
+      @for (_vertexSize of __vertexSizeList; track _vertexSize) {
+        <option [value]="_vertexSize._index">
+          {{_vertexSize._value}}
+        </option>
+      }
+    </select>
+  </div>
+  
+  <!-- Source point -->
+  <div class="form-group">
+    <label>Source Point:</label>
+    <select #_sourcePointList disabled="disabled">
+      @for (_vertexSize of __sourcePointList; track _vertexSize) {
+        <option [value]="_vertexSize._index">
+          {{_vertexSize._value}}
+        </option>
+      }
+    </select>
+  </div>
+  
+  <!-- Distance list (shown after generation) -->
+  @if (!((PointListHidden.length == 0) && (MatrixListHidden.length == 0))) {
+    <div class="form-group">
+      <label>{{tituloListadoDistancias}}</label>
+      <select #_distanceList (change)="_distanceListChange()">
+        @for (_vertexSize of __distanceList; track _vertexSize) {
+          <option [value]="_vertexSize._index">
+            {{_vertexSize._value}}
+          </option>
+        }
+      </select>
+    </div>
+  }
+  
+  <!-- Status message -->
+  @if (status_message()) {
+    <div class="alert alert-secondary" role="alert">
+      {{ status_message() }}
+    </div>
+  }
+  
+  <!-- Control buttons -->
+  <div class="form-group">
+    <input class="btn btn-primary" 
+           type="button" 
+           value="[GENERATE]" 
+           (click)="_GetGraph()"
+           [disabled]="getGraphIdle">
+    <input class="btn btn-secondary" 
+           type="button" 
+           value="[RESTART]" 
+           (click)="_ResetControls()"
+           [disabled]="(PointListHidden.length == 0) && (MatrixListHidden.length == 0)">
+    <input class="btn btn-success" 
+           type="button" 
+           value="[GENERATE PDF]" 
+           (click)="_GetPDF()"
+           [disabled]="(PointListHidden.length == 0) && (MatrixListHidden.length == 0) || (selectedIndex == 0)">
+  </div>
+</div>
+```
+
+### Component declaration
+
+```typescript
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { AlgorithmService } from 'src/app/_services/AlgorithmService/algorithm.service';
+
+@Component({
+  selector: 'app-algorithm-dijkstra',
+  templateUrl: './algorithm-dijkstra.component.html',
+  styleUrls: ['./algorithm-dijkstra.component.css'],
+  standalone: false
+})
+export class AlgorithmDijkstraComponent extends BaseReferenceComponent 
+  implements OnInit, AfterViewInit {
+  // Implementation
+}
+```
+
+## Dependencies
+
+- `AlgorithmService` - Backend communication for graph generation
+- `PdfService` - PDF export functionality
+- `BaseReferenceComponent` - Base component with common functionality
+- Canvas API - For graph visualization
+
+<Info>
+The component uses a 250x250 pixel canvas with a 10-pixel grid. Coordinates are automatically scaled for visualization.
+</Info>

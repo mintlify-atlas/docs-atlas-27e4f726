@@ -1,0 +1,443 @@
+---
+title: Sort algorithm component
+description: Animated visualization of sorting algorithms (Bubble Sort and Quick Sort) with step-by-step execution
+---
+
+## Overview
+
+The `AlgorithmSortComponent` provides an interactive visualization of sorting algorithms. It generates random number lists and animates the sorting process step-by-step, allowing users to see how Bubble Sort and Quick Sort work in real-time.
+
+## Component properties
+
+### Configuration properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `rectSize` | `number` | `10` | Size of each rectangle in pixels |
+| `screenSize` | `number` | `250` | Canvas screen size in pixels |
+| `delayInMilliseconds` | `number` | `500` | Delay between animation steps |
+| `arraySeparator` | `string` | `"|"` | Separator for array display |
+
+### State properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `lblStatus` | `signal<string>` | Current animation step status |
+| `stringMatrix` | `string[]` | Array of sorting steps |
+| `indexDraw` | `number` | Current step index in animation |
+| `sortedArrayDecoded` | `string` | Final sorted array |
+| `GetSortLabel` | `string` | Button label for sort action |
+| `stringArray_` | `string[]` | Original unsorted array |
+| `isListVisible` | `boolean` | Toggle for reference list visibility |
+
+### ViewChild references
+
+| Reference | Description |
+|-----------|-------------|
+| `c_canvas` | Canvas element for visualization |
+| `mensajes` | Hidden div containing original list |
+| `mensajes_1` | Display div for unsorted list |
+| `mensajes_2` | Display div for current/sorted list |
+| `SortAlgorithmList` | Dropdown for algorithm selection |
+| `_languajeList` | Dropdown for backend language selection |
+
+### Engine instance
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `drawEngine` | `DrawEngine` | Handles canvas drawing operations |
+| `context` | `CanvasRenderingContext2D` | Canvas 2D context |
+
+## Key methods
+
+### Sorting operations
+
+#### `GetNewSort()`
+
+Generates a new random list of numbers to sort.
+
+```typescript
+GetNewSort(): void
+```
+
+**Behavior:**
+- Calls backend service to generate random number list
+- Resets all controls and visualization
+- Displays the new unsorted list
+- Clears previous sorting results
+
+**Example usage:**
+```html
+<input class="btn btn-primary" 
+       type="button" 
+       value="[RESTART]" 
+       (click)="GetNewSort()">
+```
+
+Source: `algorithm-sort.component.ts:217`
+
+#### `GetSort()`
+
+Executes the selected sorting algorithm on the current list.
+
+```typescript
+GetSort(): void
+```
+
+**Behavior:**
+- Validates algorithm and language selection
+- Sends unsorted list to backend service
+- Receives step-by-step sorting process
+- Initiates animation of sorting steps
+
+**Example usage:**
+```html
+<input class="btn btn-success" 
+       type="button" 
+       value="[SORT]" 
+       (click)="GetSort()">
+```
+
+Source: `algorithm-sort.component.ts:123`
+
+### Animation methods
+
+#### `DrawStepMain()`
+
+Initializes the sorting animation sequence.
+
+```typescript
+DrawStepMain(): void
+```
+
+**Behavior:**
+- Resets animation index to 0
+- Updates button label to "[...sorting...]"
+- Clears status message
+- Starts the animation loop
+
+Source: `algorithm-sort.component.ts:362`
+
+#### `DrawStep()`
+
+Animates a single step of the sorting process.
+
+```typescript
+DrawStep(): void
+```
+
+**Behavior:**
+- Checks if animation is complete
+- Compares current step with previous step
+- Highlights swapped elements
+- Updates canvas visualization
+- Schedules next step with delay
+
+**Visual feedback:**
+- Elements that changed position are highlighted
+- Step counter shows progress (e.g., "Step 5 of 20")
+
+Source: `algorithm-sort.component.ts:305`
+
+#### `DrawArray()`
+
+Updates the display of the current array state.
+
+```typescript
+DrawArray(): void
+```
+
+Source: `algorithm-sort.component.ts:374`
+
+### Visualization methods
+
+#### `_ResetControls()`
+
+Resets the component to show the original unsorted list.
+
+```typescript
+_ResetControls(): void
+```
+
+**Behavior:**
+- Parses the original list into SortInfo objects
+- Redraws the grid and rectangles
+- Resets button labels
+- Displays "RESTART SUCCESSFUL" status
+
+Source: `algorithm-sort.component.ts:280`
+
+## Backend integration
+
+The component supports multiple backend implementations:
+
+### C# (.NET Core)
+
+**Generate new list:**
+```typescript
+randomVertexInfo = this.algorithmService.SortBenchMark_getNewSort_C_Sharp();
+```
+
+**Sort list:**
+```typescript
+GetSortInfo = this.algorithmService.SortBenchMark_getSort_C_Sharp(
+  p_sortAlgorith, 
+  p_unsortedList
+);
+```
+
+Source: `algorithm-sort.component.ts:156`
+
+### C++
+
+**Sort list:**
+```typescript
+GetSortInfo = this.algorithmService.getSort_CPP(
+  p_sortAlgorith, 
+  p_unsortedList
+);
+```
+
+Source: `algorithm-sort.component.ts:160`
+
+## Response format
+
+The backend returns sorting steps separated by `■`:
+
+**Example:**
+```
+45,23,67,12,89■23,45,67,12,89■23,45,12,67,89■23,12,45,67,89■12,23,45,67,89
+```
+
+Each section represents the array state after a swap operation.
+
+## Supported algorithms
+
+### Bubble Sort (algorithm ID: 1)
+
+Bubble Sort repeatedly steps through the list, compares adjacent elements, and swaps them if they're in the wrong order.
+
+**How it works:**
+
+1. Start at the beginning of the array
+2. Compare each pair of adjacent elements
+3. Swap them if they're in the wrong order
+4. Repeat until no swaps are needed
+
+**Time complexity:**
+- Best case: O(n) - already sorted
+- Average case: O(n²)
+- Worst case: O(n²)
+
+**Space complexity:** O(1)
+
+**Characteristics:**
+- Simple to implement
+- Stable sort (preserves order of equal elements)
+- Inefficient for large datasets
+
+### Quick Sort (algorithm ID: 2)
+
+Quick Sort uses a divide-and-conquer strategy to partition the array around a pivot element.
+
+**How it works:**
+
+1. Choose a pivot element from the array
+2. Partition: reorder array so elements smaller than pivot come before it
+3. Recursively apply the above steps to sub-arrays
+
+**Time complexity:**
+- Best case: O(n log n)
+- Average case: O(n log n)
+- Worst case: O(n²) - rare with good pivot selection
+
+**Space complexity:** O(log n)
+
+**Characteristics:**
+- Fast for large datasets
+- Not stable (may change order of equal elements)
+- In-place sorting
+
+<Note>
+The component highlights elements that change position during each step, making it easy to follow the algorithm's logic.
+</Note>
+
+## Drawing engine
+
+The component uses the `DrawEngine` class for canvas operations:
+
+### Initialization
+
+```typescript
+this.drawEngine = new DrawEngine(
+  this.context,
+  this.c_canvas,
+  this.rectSize,
+  this.screenSize
+);
+```
+
+Source: `algorithm-sort.component.ts:81`
+
+### Methods
+
+**DrawGrid():**
+```typescript
+this.drawEngine.DrawGrid();
+```
+
+Draws the background grid on the canvas.
+
+**DrawRectangles(numberArray):**
+```typescript
+this.drawEngine.DrawRectangles(numberArray);
+```
+
+Draws rectangles representing array elements. Elements with `swapStyle: true` are highlighted.
+
+## SortInfo model
+
+Each array element is represented as a `SortInfo` object:
+
+```typescript
+class SortInfo {
+  constructor(
+    public value: string,
+    public swapStyle: boolean
+  ) {}
+}
+```
+
+**Properties:**
+- `value` - The numeric value
+- `swapStyle` - If `true`, element is highlighted (changed position)
+
+## Usage example
+
+### Template
+
+```html
+<div align="center">
+  <app-base-reference></app-base-reference>
+  <hr>
+  
+  <!-- Display areas -->
+  <p>List to Sort</p>
+  <div #mensajes_1 class="mensajes"></div>
+  
+  <p>Sorted list</p>
+  <div #mensajes_2 class="mensajes"></div>
+  
+  <!-- Hidden original list -->
+  <div #mensajes style="visibility: hidden; height: 0px;"></div>
+  
+  <hr>
+  
+  <!-- Canvas visualization -->
+  <canvas #c_canvas width="250px" height="250px"></canvas>
+  
+  <hr>
+  
+  <!-- Backend selection -->
+  <div class="form-group">
+    <label>BACKEND:</label>
+    <select #_languajeList>
+      @for (_languageName of __languajeList; track _languageName) {
+        <option [value]="_languageName._index"
+                [selected]="_languageName._selected">
+          {{_languageName._value}}
+        </option>
+      }
+    </select>
+  </div>
+  
+  <!-- Algorithm selection -->
+  <div class="form-group">
+    <label>ALGORITHM:</label>
+    <select #SortAlgorithmList 
+            [disabled]="GetSortLabel === '[...sorting...]'">
+      <option value="0">[CHOOSE OPTION]</option>
+      <option value="1">BUBBLE SORT</option>
+      <option value="2">QUICK SORT</option>
+    </select>
+  </div>
+  
+  <hr>
+  
+  <!-- Status messages -->
+  @if (status_message()) {
+    <div class="alert alert-secondary">
+      {{ status_message() }}
+    </div>
+  }
+  
+  @if (lblStatus()) {
+    <div class="alert alert-secondary">
+      {{ lblStatus() }}
+    </div>
+  }
+  
+  <hr>
+  
+  <!-- Control buttons -->
+  <div class="form-group">
+    <input class="btn btn-success" 
+           type="button" 
+           [value]="GetSortLabel" 
+           (click)="GetSort()"
+           [disabled]="GetSortLabel === '[...sorting...]'">
+    <input class="btn btn-primary" 
+           type="button" 
+           value="[RESTART]" 
+           (click)="GetNewSort()"
+           [disabled]="GetSortLabel === '[...sorting...]'">
+  </div>
+</div>
+```
+
+### Component declaration
+
+```typescript
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { AlgorithmService } from 'src/app/_services/AlgorithmService/algorithm.service';
+import { DrawEngine } from 'src/app/_engines/draw.engine';
+
+@Component({
+  selector: 'app-algorithm-sort',
+  templateUrl: './algorithm-sort.component.html',
+  styleUrls: ['./algorithm-sort.component.css'],
+  standalone: false
+})
+export class AlgorithmSortComponent extends BaseReferenceComponent 
+  implements OnInit, AfterViewInit {
+  // Implementation
+}
+```
+
+## Workflow
+
+1. **Initialize**: Component loads and generates a random list
+2. **Select Algorithm**: User chooses Bubble Sort or Quick Sort
+3. **Execute**: User clicks "[SORT]" button
+4. **Animate**: Component displays each sorting step with 500ms delay
+5. **Complete**: Final sorted list is displayed
+6. **Restart**: User can generate a new list to sort again
+
+<Info>
+The animation delay can be adjusted by modifying the `delayInMilliseconds` property. Decrease for faster animation, increase for slower, more detailed observation.
+</Info>
+
+## Dependencies
+
+- `AlgorithmService` - Backend communication for list generation and sorting
+- `DrawEngine` - Canvas drawing utilities
+- `BaseReferenceComponent` - Base component with common functionality
+- `SortInfo` - Model for array elements with highlight state
+
+## Visual features
+
+- **Grid background** - Provides visual reference
+- **Animated rectangles** - Represent array values with height proportional to value
+- **Highlight on swap** - Elements that moved are visually distinguished
+- **Step counter** - Shows current progress (e.g., "Step 5 of 20")
+- **Real-time array display** - Shows current state in text format

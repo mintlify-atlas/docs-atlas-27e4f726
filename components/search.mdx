@@ -1,0 +1,265 @@
+---
+title: SearchComponent
+description: Searchable and sortable data table component with pagination support
+---
+
+## Overview
+
+The `SearchComponent` provides a reusable search and table interface with sorting capabilities. It leverages the `SearchService` for data management and pagination, and uses the `BaseSortableHeader` directive for column sorting functionality. This component is designed for displaying searchable lists of data models.
+
+## Component metadata
+
+<ParamField path="selector" type="string" default="app-search-custom">
+  Component selector used in templates
+</ParamField>
+
+<ParamField path="standalone" type="boolean" default="false">
+  This component is not standalone and must be declared in a module
+</ParamField>
+
+<ParamField path="templateUrl" type="string" default="./search.component.html">
+  Path to the component template
+</ParamField>
+
+<ParamField path="styleUrl" type="string" default="./search.component.css">
+  Path to the component styles
+</ParamField>
+
+## Properties
+
+### Observable properties
+
+<ParamField path="__pages" type="Observable<_BaseModel[]>">
+  Observable stream of the current page of data models. Populated from `searchService.Pagelist`.
+</ParamField>
+
+<ParamField path="__total" type="Observable<number>">
+  Observable stream of the total number of records. Populated from `searchService.total`.
+</ParamField>
+
+### View queries
+
+<ParamField path="_headers" type="QueryList<BaseSortableHeader> | undefined">
+  Collection of sortable header directives in the template. Used to manage sorting state across multiple columns.
+</ParamField>
+
+### Configuration
+
+<ParamField path="ConfigRoleString" type="string" default="SiteRole.RoleConfig.toString()">
+  String representation of the config role, likely used for permission checks or role-based rendering.
+</ParamField>
+
+## Constructor dependencies
+
+<ParamField path="searchService" type="SearchService">
+  Service that manages search state, pagination, sorting, and data retrieval. Provides observables for page list and total count.
+</ParamField>
+
+## Methods
+
+### onSort()
+
+Handles column sort events from sortable headers.
+
+```typescript
+onSort({ _column, _direction }: _BaseSortEvent): void
+```
+
+<ParamField path="_column" type="string">
+  The column identifier to sort by
+</ParamField>
+
+<ParamField path="_direction" type="'asc' | 'desc' | ''">
+  The sort direction (ascending, descending, or none)
+</ParamField>
+
+**Behavior:**
+1. Resets all other column headers to unsorted state
+2. Updates the `searchService.sortColumn` with the selected column
+3. Updates the `searchService.sortDirection` with the selected direction
+4. The service automatically re-fetches and sorts the data
+
+### ngOnInit()
+
+Angular lifecycle hook for component initialization.
+
+```typescript
+ngOnInit(): void
+```
+
+Currently includes a placeholder comment for preloading voices, suggesting future text-to-speech functionality.
+
+## Template structure
+
+The template is minimal in the current implementation:
+
+```html
+<p>search works!</p>
+```
+
+<Note>
+The actual search UI (input fields, table, pagination controls) would typically be implemented in this template, utilizing the component's properties and methods.
+</Note>
+
+## Usage examples
+
+<Tabs>
+  <Tab title="Module declaration">
+    ```typescript
+    import { NgModule } from '@angular/core';
+    import { SearchComponent } from './path/to/search.component';
+    import { BaseSortableHeader } from './path/to/sortable.directive';
+
+    @NgModule({
+      declarations: [
+        SearchComponent,
+        BaseSortableHeader
+      ],
+      exports: [SearchComponent]
+    })
+    export class SearchModule {}
+    ```
+  </Tab>
+  <Tab title="Template usage">
+    ```html
+    <app-search-custom></app-search-custom>
+    ```
+  </Tab>
+  <Tab title="With search service">
+    ```typescript
+    import { Component } from '@angular/core';
+    import { SearchService } from './search.service';
+
+    @Component({
+      selector: 'app-data-view',
+      template: `
+        <app-search-custom></app-search-custom>
+      `,
+      providers: [SearchService]
+    })
+    export class DataViewComponent {}
+    ```
+  </Tab>
+</Tabs>
+
+## Typical implementation pattern
+
+While the template shows placeholder content, a complete implementation would typically include:
+
+```html
+<!-- Search input -->
+<input type="text" [(ngModel)]="searchService.searchTerm" placeholder="Search..." />
+
+<!-- Sortable table -->
+<table>
+  <thead>
+    <tr>
+      <th sortable="name" (sort)="onSort($event)">Name</th>
+      <th sortable="date" (sort)="onSort($event)">Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let item of (__pages | async)">
+      <td>{{ item.name }}</td>
+      <td>{{ item.date }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Pagination info -->
+<div>Total records: {{ __total | async }}</div>
+```
+
+## Sorting mechanism
+
+The sorting system works through coordination between the component and directive:
+
+1. User clicks on a sortable column header
+2. `BaseSortableHeader` directive emits a `_BaseSortEvent`
+3. `onSort()` method receives the event
+4. All other headers are reset to prevent multi-column sorting
+5. The clicked header's direction is preserved
+6. Sort parameters are passed to `SearchService`
+7. Service updates the data observables with sorted results
+
+```typescript
+onSort({ _column, _direction }: _BaseSortEvent) {
+  // Reset other headers
+  this._headers?.forEach((__header) => {
+    if (__header.sortable !== _column) {
+      __header.direction = '';
+    }
+  });
+  // Apply new sort
+  this.searchService.sortColumn = _column;
+  this.searchService.sortDirection = _direction;
+}
+```
+
+## Integration with SearchService
+
+The component heavily relies on `SearchService` for:
+
+<ParamField path="Pagelist" type="Observable<_BaseModel[]>">
+  Reactive data stream for the current page of results
+</ParamField>
+
+<ParamField path="total" type="Observable<number>">
+  Reactive stream for total record count
+</ParamField>
+
+<ParamField path="sortColumn" type="string">
+  Current sort column identifier
+</ParamField>
+
+<ParamField path="sortDirection" type="'asc' | 'desc' | ''">
+  Current sort direction
+</ParamField>
+
+## Key features
+
+### Reactive data binding
+
+Uses RxJS observables for automatic UI updates:
+```typescript
+this.__pages = this.searchService.Pagelist;
+this.__total = this.searchService.total;
+```
+
+### Single-column sorting
+
+Ensures only one column is sorted at a time by resetting other headers:
+```typescript
+this._headers?.forEach((__header) => {
+  if (__header.sortable !== _column) {
+    __header.direction = '';
+  }
+});
+```
+
+### Role-based configuration
+
+Includes role string for potential permission-based features:
+```typescript
+public ConfigRoleString: string = SiteRole.RoleConfig.toString();
+```
+
+## Related types
+
+<ParamField path="_BaseModel" type="interface">
+  Base model interface for data items displayed in the search results
+</ParamField>
+
+<ParamField path="_BaseSortEvent" type="interface">
+  Event interface containing `_column` and `_direction` properties
+</ParamField>
+
+<ParamField path="SiteRole" type="enum">
+  Enum containing role definitions including `RoleConfig`
+</ParamField>
+
+## Source location
+
+- TypeScript: `~/workspace/source/src/app/_components/search/search.component.ts`
+- Template: `~/workspace/source/src/app/_components/search/search.component.html`
+- Styles: `~/workspace/source/src/app/_components/search/search.component.css`

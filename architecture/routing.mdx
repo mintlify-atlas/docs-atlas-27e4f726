@@ -1,0 +1,310 @@
+---
+title: Routing system
+description: Understanding the extended routing configuration and navigation architecture
+---
+
+The Angular PWA Demo implements a custom routing system with extended route metadata for enhanced navigation capabilities.
+
+## Extended route interface
+
+The application extends Angular's standard `Route` interface to include additional metadata:
+
+```typescript app-routing.module.ts:33-38
+export interface _Route extends Route
+{  
+    id      : number;
+    caption : string;
+    queryParams : string;
+}
+```
+
+<Info>
+  This extended interface allows routes to carry presentation metadata (captions) and query parameter identifiers for dynamic content loading.
+</Info>
+
+## Route configuration
+
+The application defines 44 routes covering various features:
+
+<Tabs>
+  <Tab title="Core routes">
+    ### Home and navigation
+
+    ```typescript app-routing.module.ts:42-44
+    {  id: 0,  path: 'Home'      , component: HomeWebComponent       , caption: ' Home'  , queryParams : 'PAGE_ANGULAR_DEMO_INDEX' },
+    {  id: 0,  path: 'Index'     , component: IndexComponent         , caption: ' Index' , queryParams : 'PAGE_HOME_INDEX'         },
+    {  id: 0,  path:  ''         , component: HomeWebComponent       , caption: ''       , queryParams : '' },
+    ```
+
+    The default route (`''`) loads the home component, providing a landing page for first-time visitors.
+  </Tab>
+
+  <Tab title="About routes">
+    ### Information pages
+
+    ```typescript app-routing.module.ts:45-49
+    {  id: 0,  path: 'SCM'              , component: SCMComponent              , caption: ' About  - SCM'                       , queryParams : '' },
+    {  id: 0,  path: 'PageUrlList'      , component: PageUrlListComponent      , caption: ' About  - LLM List'                 , queryParams : 'PAGE_ABOUT_LLM_LIST'     },
+    {  id: 0,  path: 'PageUrlList'      , component: PageUrlListComponent      , caption: ' About  - Educational Resources'   , queryParams : 'PAGE_ABOUT_EDU_RESC'     },
+    {  id: 0,  path: 'TechnicalSpecs'   , component: TechnicalSpecsComponent   , caption: ' About  - Technical Specifications', queryParams : '' },
+    {  id: 0,  path: 'ContactForm'      , component: ContactformComponent      , caption: ' About  - Contact Form'             , queryParams : '' },
+    ```
+
+    <Note>
+      Notice how `PageUrlListComponent` is reused with different query parameters to display different content (LLM List vs Educational Resources).
+    </Note>
+  </Tab>
+
+  <Tab title="Algorithm routes">
+    ### Algorithm demonstrations
+
+    ```typescript app-routing.module.ts:50-53
+    {  id: 0,  path: 'AlgorithmRegEx'     , component: AlgorithmRegExComponent     , caption: ' Algorithms - Regular Expression'    , queryParams : '' },
+    {  id: 0,  path: 'AlgorithmSort'      , component: AlgorithmSortComponent      , caption: ' Algorithms - Sort'                 , queryParams : '' },
+    {  id: 0,  path: 'AlgorithmDijkstra'  , component: AlgorithmDijkstraComponent  , caption: ' Algorithms - Dijkstra  - Shortest Path', queryParams : '' },
+    {  id: 0,  path: 'AlgorithmCollision' , component: AlgorithmCollisionComponent , caption: ' Algorithms - Collision - Demo'     , queryParams : '' },
+    ```
+
+    Algorithm routes showcase computational demonstrations including pathfinding, sorting, and collision detection.
+  </Tab>
+
+  <Tab title="Game routes">
+    ### Interactive games
+
+    ```typescript app-routing.module.ts:58-64
+    {  id: 0,  path: 'GamesSudoku'        , component: SudokuComponent             , caption: ' Games  - Sudoku'              , queryParams : '' },
+    {  id: 0,  path: 'GamesTicTacToe'     , component: GameTictactoeComponent      , caption: ' Games  - Tic-Tac-Toe'         , queryParams : '' },
+    {  id: 0,  path: 'GamesTicTacToeAI'   , component: TicTacToeBoardAiComponent   , caption: ' Games  - Tic-Tac-Toe - A.I.'  , queryParams : '' },
+    {  id: 0,  path: 'GamesHanoiAuto'     , component: GameHanoiAutoComponent      , caption: ' Games  - Hanoi 2d'            , queryParams : '' },
+    {  id: 0,  path: 'GamesHanoi3d'       , component: GameHanoi3dComponent        , caption: ' Games  - Hanoi 3d'            , queryParams : '' },
+    {  id: 0,  path: 'GamesTetris'        , component: GameTetrisComponent         , caption: ' Games  - Tetris'              , queryParams : '' },
+    {  id: 0,  path: 'GamesTetrisAI'      , component: GameTetrisAIComponent       , caption: ' Games  - Tetris - A.I.'       , queryParams : '' },
+    ```
+
+    Game routes include classic games with both human and AI modes.
+  </Tab>
+
+  <Tab title="File generation">
+    ### File export features
+
+    ```typescript app-routing.module.ts:54-57
+    {  id: 0,  path: 'FilesGenerationXLS' , component: FilesGenerationXLSComponent , caption: ' File Generation - XLS'        , queryParams : '' },
+    {  id: 0,  path: 'FilesGenerationCSV' , component: FilesGenerationCSVComponent , caption: ' File Generation - CSV'        , queryParams : '' },
+    {  id: 0,  path: 'FilesGenerationPDF' , component: FilesGenerationPDFComponent , caption: ' File Generation - PDF'        , queryParams : '' },
+    {  id: 0,  path: 'Chart'              , component: ChartComponent              , caption: ' File Generation - Chart Demo' , queryParams : '' },
+    ```
+
+    These routes demonstrate generating and downloading various file formats.
+  </Tab>
+
+  <Tab title="Curriculum routes">
+    ### Learning resources
+
+    ```typescript app-routing.module.ts:69-75
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - Artificial Intelligence'    , queryParams : 'PAGE_CURRICULUM_AI'              },
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - C++'                       , queryParams : 'PAGE_CURRICULUM_CPP'             },
+    {  id: 0,  path: 'CurriculumAngular'  , component: CurriculumAngularComponent  , caption: ' Curriculum - Angular    / Typescript'   , queryParams : 'PAGE_CURRICULUM_ANGULAR'         },
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - Node.js    / Javascript'   , queryParams : 'PAGE_CURRICULUM_NODE_JS'         },
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - SpringBoot / Java'         , queryParams : 'PAGE_CURRICULUM_SPRING_BOOT_JAVA'},
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - Django     / Python'       , queryParams : 'PAGE_CURRICULUM_DJANGO_PYTHON'   },
+    {  id: 0,  path: 'GridParam'          , component: GridParamComponent          , caption: ' Curriculum - .Net core  / C#'           , queryParams : 'PAGE_CURRICULUM_NET_CORE'        },
+    ```
+
+    Curriculum routes extensively use the `GridParamComponent` with different query parameters to display technology-specific content.
+  </Tab>
+</Tabs>
+
+## Route component reuse pattern
+
+The application demonstrates an efficient pattern for component reuse:
+
+<CodeGroup>
+```typescript Generic component
+// Same component, different content via queryParams
+{  path: 'GridParam', component: GridParamComponent, 
+   caption: ' Curriculum - Angular / Typescript', 
+   queryParams : 'PAGE_CURRICULUM_ANGULAR' }
+
+{  path: 'GridParam', component: GridParamComponent, 
+   caption: ' Curriculum - Node.js / Javascript', 
+   queryParams : 'PAGE_CURRICULUM_NODE_JS' }
+```
+
+```typescript Component implementation
+// GridParamComponent reads queryParams to load specific content
+export class GridParamComponent implements OnInit {
+  ngOnInit(): void {
+    const pageId = this.route.snapshot.queryParams['pageId'];
+    this.loadContentForPage(pageId);
+  }
+}
+```
+</CodeGroup>
+
+<Info>
+  This pattern reduces code duplication by using a single component to display multiple content variations based on query parameters.
+</Info>
+
+## Route ID assignment
+
+The routing module automatically assigns sequential IDs to routes in the constructor:
+
+```typescript app-routing.module.ts:93-104
+constructor()
+{
+    //
+    let index : number = 0;
+    //
+    routes.forEach(element => {
+        if (((element.path == '') && (element.caption == ''))==false)
+        {
+          element.id = ++index;
+        }
+    });    
+}
+```
+
+<Note>
+  Routes with both empty `path` and `caption` are excluded from ID assignment, as they represent fallback or utility routes.
+</Note>
+
+## Router module configuration
+
+The router is configured with the `forRoot` method:
+
+```typescript app-routing.module.ts:87-90
+@NgModule({
+  imports: [RouterModule.forRoot(routes)], 
+  exports: [RouterModule]
+})
+```
+
+### Router configuration options
+
+While not explicitly shown in the configuration, `forRoot` can accept additional options:
+
+<Accordion title="Common router options">
+  ```typescript
+  RouterModule.forRoot(routes, {
+    useHash: false,                    // Use path-based routing
+    enableTracing: false,              // Debug routing in console
+    preloadingStrategy: PreloadAllModules,  // Lazy loading strategy
+    scrollPositionRestoration: 'enabled',   // Restore scroll on navigation
+    anchorScrolling: 'enabled',            // Enable fragment scrolling
+    relativeLinkResolution: 'corrected'    // Fix relative link resolution
+  })
+  ```
+</Accordion>
+
+## Hash location strategy
+
+The application uses hash-based routing:
+
+```typescript app.module.ts:112
+{ provide: LocationStrategy, useClass: HashLocationStrategy }
+```
+
+### Why hash location strategy?
+
+<CardGroup cols={2}>
+  <Card title="Server compatibility" icon="server">
+    Works with any web server without URL rewrite configuration
+  </Card>
+  <Card title="Deployment flexibility" icon="rocket">
+    Can be deployed to static hosting without server-side routing setup
+  </Card>
+  <Card title="Legacy support" icon="clock">
+    Compatible with older browsers and hosting environments
+  </Card>
+  <Card title="Bookmark friendly" icon="bookmark">
+    URLs with hash fragments work consistently across all servers
+  </Card>
+</CardGroup>
+
+<Warning>
+  Hash strategy creates URLs like `example.com/#/about` instead of `example.com/about`. While less aesthetic, it provides maximum compatibility.
+</Warning>
+
+## Wildcard route
+
+The last route captures all unmatched URLs:
+
+```typescript app-routing.module.ts:84
+{  id: 0,  path: '**'  , component: PageNotFoundComponent  , caption: ''  , queryParams : '' },
+```
+
+<Note>
+  The wildcard route (`**`) must be the last route in the configuration. It acts as a catch-all for undefined paths.
+</Note>
+
+## Navigation patterns
+
+The application supports multiple navigation approaches:
+
+<AccordionGroup>
+  <Accordion title="Direct routing">
+    ```typescript
+    // Navigate to a specific path
+    this.router.navigate(['/AlgorithmSort']);
+    ```
+  </Accordion>
+
+  <Accordion title="Query parameter navigation">
+    ```typescript
+    // Navigate with query parameters
+    this.router.navigate(['/GridParam'], {
+      queryParams: { pageId: 'PAGE_CURRICULUM_ANGULAR' }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Relative navigation">
+    ```typescript
+    // Navigate relative to current route
+    this.router.navigate(['../sibling'], { relativeTo: this.route });
+    ```
+  </Accordion>
+
+  <Accordion title="Programmatic with state">
+    ```typescript
+    // Navigate with state data
+    this.router.navigate(['/details'], {
+      state: { data: selectedItem }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Route organization summary
+
+The 44 routes are organized into categories:
+
+| Category | Route Count | Example |
+|----------|-------------|----------|
+| Home/Core | 3 | `Home`, `Index`, `` |
+| About | 5 | `SCM`, `TechnicalSpecs`, `ContactForm` |
+| Algorithms | 4 | `AlgorithmSort`, `AlgorithmDijkstra` |
+| File Generation | 4 | `FilesGenerationPDF`, `Chart` |
+| Games | 7 | `GamesTetris`, `GamesSudoku` |
+| Miscellaneous | 3 | `Chat`, `OcrPhotoCapture`, `FractalDemo` |
+| Machine Learning | 1 | `LinearRegression` |
+| Curriculum | 7 | `CurriculumAngular`, various GridParam |
+| Demo Languages | 6 | Various GridParam for different tech stacks |
+| Utility | 3 | `PageUrlList`, `Landing`, `**` |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Service architecture" href="/architecture/services" icon="server">
+    Learn about the service layer and dependency injection
+  </Card>
+  <Card title="PWA features" href="/architecture/pwa-features" icon="mobile">
+    Understand Progressive Web App capabilities
+  </Card>
+  <Card title="Architecture overview" href="/architecture/overview" icon="sitemap">
+    Review the complete architecture
+  </Card>
+  <Card title="Quick start" href="/quickstart" icon="rocket">
+    Get started with development
+  </Card>
+</CardGroup>

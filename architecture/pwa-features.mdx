@@ -1,0 +1,305 @@
+---
+title: Progressive Web App features
+description: Understanding PWA capabilities including offline support, caching, and installability
+---
+
+The Angular PWA Demo implements Progressive Web App features using Angular's Service Worker module, providing native app-like experiences in the browser.
+
+## Service worker configuration
+
+The application uses Angular's Service Worker for comprehensive PWA support:
+
+```typescript app.module.ts:103-106
+ServiceWorkerModule.register('ngsw-worker.js', {
+  enabled: !isDevMode(),
+  registrationStrategy: 'registerWhenStable:30000'
+})
+```
+
+<Info>
+  The service worker is disabled in development mode and registers 30 seconds after the app becomes stable in production, ensuring optimal performance.
+</Info>
+
+## Caching strategy
+
+The service worker configuration defines two asset groups with different caching strategies:
+
+<Tabs>
+  <Tab title="App shell">
+    ### Prefetch strategy
+
+    Critical application files are prefetched immediately on installation:
+
+    ```json ngsw-config.json:4-16
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    }
+    ```
+
+    **Install mode: prefetch**
+    - Downloads all specified resources during service worker installation
+    - Ensures instant availability even on first offline visit
+    - Ideal for critical app shell resources
+
+    <Note>
+      The app shell includes the HTML, CSS, JavaScript bundles, and web manifest - everything needed for the app to start.
+    </Note>
+  </Tab>
+
+  <Tab title="Assets">
+    ### Lazy loading with prefetch updates
+
+    Static assets are loaded on-demand but updated proactively:
+
+    ```json ngsw-config.json:18-27
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**"
+        ]
+      }
+    }
+    ```
+
+    **Install mode: lazy**
+    - Resources are cached only when first requested
+    - Reduces initial installation time
+    - Optimal for images, fonts, and other assets
+
+    **Update mode: prefetch**
+    - New versions are downloaded in the background
+    - Ensures users get updates without manual intervention
+    - Balances performance with freshness
+
+    <Info>
+      This strategy minimizes initial load time while ensuring assets are available offline after first use.
+    </Info>
+  </Tab>
+</Tabs>
+
+## Web app manifest
+
+The manifest defines how the app appears when installed:
+
+<Accordion title="View complete manifest configuration">
+  ```json manifest.webmanifest
+  {
+    "name": "AngularDijkstra",
+    "short_name": "AngularDijkstra",
+    "theme_color": "#1976d2",
+    "background_color": "#fafafa",
+    "display": "standalone",
+    "scope": "./",
+    "start_url": "./",
+    "icons": [
+      {
+        "src": "assets/icons/icon-72x72.png",
+        "sizes": "72x72",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-96x96.png",
+        "sizes": "96x96",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-128x128.png",
+        "sizes": "128x128",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-144x144.png",
+        "sizes": "144x144",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-152x152.png",
+        "sizes": "152x152",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-192x192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-384x384.png",
+        "sizes": "384x384",
+        "type": "image/png",
+        "purpose": "maskable any"
+      },
+      {
+        "src": "assets/icons/icon-512x512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable any"
+      }
+    ]
+  }
+  ```
+</Accordion>
+
+### Manifest properties explained
+
+<CardGroup cols={2}>
+  <Card title="Display mode" icon="desktop">
+    **standalone**: App runs in its own window without browser UI, providing a native app experience
+  </Card>
+  <Card title="Theme color" icon="palette">
+    **#1976d2**: Material Design blue, applied to browser UI elements and splash screen
+  </Card>
+  <Card title="Icons" icon="image">
+    **8 sizes**: From 72x72 to 512x512 pixels for different devices and contexts
+  </Card>
+  <Card title="Purpose" icon="bullseye">
+    **maskable any**: Icons work with adaptive icon masks and fallback to any shape
+  </Card>
+</CardGroup>
+
+## Offline functionality
+
+The service worker enables the app to work offline through intelligent caching:
+
+<Steps>
+  <Step title="Initial visit">
+    On the first visit, the service worker installs and prefetches the app shell (HTML, CSS, JS).
+  </Step>
+  <Step title="Asset caching">
+    As users navigate, assets like images and fonts are cached lazily on first request.
+  </Step>
+  <Step title="Offline access">
+    When offline, all previously cached resources are served from the cache, allowing full app functionality.
+  </Step>
+  <Step title="Background sync">
+    When connection is restored, the service worker checks for updates and prefetches new versions.
+  </Step>
+</Steps>
+
+<Warning>
+  The service worker only activates in production builds (`ng build`). Development mode (`ng serve`) bypasses the service worker for easier debugging.
+</Warning>
+
+## Installation experience
+
+Users can install the PWA to their device:
+
+### Desktop installation
+
+1. Browser shows an install button in the address bar
+2. Clicking installs the app to the operating system
+3. App appears in the application menu/dock
+4. Opens in standalone window without browser chrome
+
+### Mobile installation
+
+1. Browser prompts "Add to Home Screen"
+2. App icon appears on home screen
+3. Launches fullscreen like a native app
+4. Splash screen uses theme and background colors
+
+<Note>
+  Installation is optional - the app works perfectly in the browser. Installation provides a more integrated experience.
+</Note>
+
+## Registration strategy
+
+The service worker uses a stability-based registration:
+
+```typescript
+registrationStrategy: 'registerWhenStable:30000'
+```
+
+This means:
+- Service worker registration waits until the app is stable
+- If not stable after 30 seconds, registers anyway
+- Prevents registration from interfering with initial load
+- Optimizes First Contentful Paint (FCP) and Time to Interactive (TTI)
+
+## PWA best practices implemented
+
+<AccordionGroup>
+  <Accordion title="Fast loading">
+    - App shell architecture with prefetched critical resources
+    - Lazy loading for non-critical assets
+    - Optimized bundle sizes with code splitting
+  </Accordion>
+
+  <Accordion title="Offline functionality">
+    - Service worker caches all visited pages
+    - Static assets cached on first use
+    - App shell always available offline
+  </Accordion>
+
+  <Accordion title="App-like experience">
+    - Standalone display mode
+    - Custom splash screen
+    - Theme color integration
+    - No browser UI when installed
+  </Accordion>
+
+  <Accordion title="Progressive enhancement">
+    - Works without service worker in older browsers
+    - Graceful degradation for unsupported features
+    - Service worker optional, not required
+  </Accordion>
+</AccordionGroup>
+
+## Testing PWA features
+
+To test PWA functionality:
+
+<CodeGroup>
+```bash Production build
+# Build the app for production
+ng build
+
+# Serve the production build
+cd dist/angular-dijkstra
+python -m http.server 8080
+```
+
+```bash Lighthouse audit
+# Run Lighthouse PWA audit
+lighthouse http://localhost:8080 --view
+```
+</CodeGroup>
+
+<Info>
+  Chrome DevTools Application tab shows service worker status, cached resources, and manifest information for debugging.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Routing system" href="/architecture/routing" icon="route">
+    Understand the application routing configuration
+  </Card>
+  <Card title="Service architecture" href="/architecture/services" icon="server">
+    Learn about the service layer pattern
+  </Card>
+  <Card title="Development setup" href="/development" icon="code">
+    Set up your development environment
+  </Card>
+  <Card title="Architecture overview" href="/architecture/overview" icon="sitemap">
+    Review the overall architecture
+  </Card>
+</CardGroup>

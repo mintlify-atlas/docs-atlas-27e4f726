@@ -1,0 +1,575 @@
+---
+title: Tetris service
+description: Angular service for managing Tetris game state and AI gameplay through C++ backend integration
+---
+
+The `TetrisService` provides comprehensive functionality for managing Tetris game instances, including game lifecycle management, state retrieval, and AI-powered gameplay. It communicates with a C++ backend implementation that handles game logic and AI calculations.
+
+## Service location
+
+```typescript
+import { TetrisService } from 'src/app/_services/__Games/TetrisService/tetris.service';
+```
+
+## Overview
+
+The service is provided at the root level and maintains connection to a C++ backend Tetris engine:
+
+```typescript
+@Injectable({
+  providedIn: 'root'
+})
+export class TetrisService {
+  private readonly apiUrl = `${baseUrlNetCoreCPPEntry}api/tetris`;
+  private autoPlaySub: Subscription | null = null;
+  private gameCreated = false;
+
+  constructor(private http: HttpClient) {}
+}
+```
+
+## Game lifecycle methods
+
+### createGame()
+
+Creates a new Tetris game instance on the backend.
+
+<ParamField path="Returns" type="Observable<{ message: string; handle: number }>">
+  An Observable that emits the creation confirmation and game handle
+</ParamField>
+
+```typescript
+this.tetrisService.createGame().subscribe({
+  next: (result) => {
+    console.log(result.message); // "Game instance created"
+    console.log('Game handle:', result.handle);
+    // Game is now ready to play
+  },
+  error: (err) => console.error('Failed to create game:', err)
+});
+```
+
+<Tip>
+You must call `createGame()` before using any other game methods. The service tracks creation state internally.
+</Tip>
+
+### destroyGame()
+
+Destroys the current game instance and cleans up backend resources.
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when the game is destroyed
+</ParamField>
+
+```typescript
+this.tetrisService.destroyGame().subscribe({
+  next: () => {
+    console.log('Game destroyed successfully');
+  }
+});
+```
+
+### reset()
+
+Resets the game to its initial state. If no game exists, it creates a new one.
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when the game is reset
+</ParamField>
+
+```typescript
+resetGame(): void {
+  this.tetrisService.reset().subscribe({
+    next: () => {
+      console.log('Game reset successfully');
+      this.score = 0;
+      this.lines = 0;
+    },
+    error: (err) => console.error('Reset failed:', err)
+  });
+}
+```
+
+### step()
+
+Advances the game by one step (moves the current piece down one row).
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when the step is processed
+</ParamField>
+
+```typescript
+this.tetrisService.step().subscribe({
+  next: () => {
+    // Update game state after step
+    this.refreshGameState();
+  },
+  error: (err) => {
+    if (err.message.includes('Game not created')) {
+      console.error('Create a game first');
+    }
+  }
+});
+```
+
+<Warning>
+Calling `step()` without creating a game first will throw an error: "Game not created. Call createGame() first."
+</Warning>
+
+## Game state methods
+
+### getState()
+
+Retrieves the current game state from the backend.
+
+<ParamField path="Returns" type="Observable<TetrisState | null>">
+  An Observable that emits the current game state or null if no game exists
+</ParamField>
+
+```typescript
+this.tetrisService.getState().subscribe({
+  next: (state: TetrisState | null) => {
+    if (state) {
+      this.board = state.boardMatrix;
+      this.score = state.score;
+      this.lines = state.lines;
+      this.level = state.level;
+      this.nextPiece = state.nextPiece;
+      this.gameOver = state.gameOver;
+    }
+  }
+});
+```
+
+#### TetrisState interface
+
+```typescript
+interface TetrisState {
+  boardMatrix: number[][];  // 20x10 game board
+  score: number;            // Current score
+  lines: number;            // Lines cleared
+  level: number;            // Current level
+  nextPiece: number;        // Next piece type (1-7)
+  gameOver: boolean;        // Game over flag
+}
+```
+
+### getStateWithPreview()
+
+Retrieves the game state including AI move preview information.
+
+<ParamField path="Returns" type="Observable<TetrisState | null>">
+  An Observable that emits the game state with preview data or null
+</ParamField>
+
+```typescript
+this.tetrisService.getStateWithPreview().subscribe({
+  next: (state) => {
+    if (state) {
+      // State includes AI preview information
+      this.updateBoardWithPreview(state);
+    }
+  },
+  error: (err) => console.warn('Preview fetch failed:', err)
+});
+```
+
+## AI methods
+
+### trainAI()
+
+Trains the AI using genetic algorithms to optimize gameplay weights.
+
+<ParamField path="weightsFile" type="string" default="tetris_weights.txt">
+  The filename to save trained weights to
+</ParamField>
+
+<ParamField path="generations" type="number" default="20">
+  Number of generations to train
+</ParamField>
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when training finishes
+</ParamField>
+
+```typescript
+trainAI(): void {
+  const weightsFile = 'my_weights.txt';
+  const generations = 50;
+  
+  this.tetrisService.trainAI(weightsFile, generations).subscribe({
+    next: () => {
+      console.log('AI training complete');
+      // Load the trained weights
+      this.loadTrainedWeights(weightsFile);
+    },
+    error: (err) => console.error('Training failed:', err)
+  });
+}
+```
+
+<Warning>
+AI training can be computationally intensive and may take significant time depending on the number of generations.
+</Warning>
+
+### loadAI()
+
+Loads AI weights from a file on the backend.
+
+<ParamField path="weightsFile" type="string" required>
+  The filename containing the AI weights to load
+</ParamField>
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when weights are loaded
+</ParamField>
+
+```typescript
+this.tetrisService.loadAI('tetris_weights.txt').subscribe({
+  next: () => {
+    console.log('AI weights loaded successfully');
+    this.aiEnabled = true;
+  },
+  error: (err) => {
+    console.error('Failed to load AI:', err);
+  }
+});
+```
+
+### getAIWeights()
+
+Retrieves the current AI weights from the backend.
+
+<ParamField path="Returns" type="Observable<AIWeights>">
+  An Observable that emits the current AI weight configuration
+</ParamField>
+
+```typescript
+this.tetrisService.getAIWeights().subscribe({
+  next: (weights: AIWeights) => {
+    console.log('Lines weight:', weights.linesWeight);
+    console.log('Height weight:', weights.heightWeight);
+    console.log('Holes weight:', weights.holesWeight);
+    console.log('Bumpiness weight:', weights.bumpinessWeight);
+  }
+});
+```
+
+#### AIWeights interface
+
+```typescript
+interface AIWeights {
+  linesWeight: number;      // Weight for cleared lines (positive)
+  heightWeight: number;     // Weight for board height (negative)
+  holesWeight: number;      // Weight for holes in board (negative)
+  bumpinessWeight: number;  // Weight for surface irregularity (negative)
+}
+```
+
+### setAIWeights()
+
+Sets custom AI weights for gameplay strategy.
+
+<ParamField path="weights" type="AIWeights" required>
+  The AI weight configuration to apply
+</ParamField>
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when weights are set
+</ParamField>
+
+```typescript
+const aggressiveWeights: AIWeights = {
+  linesWeight: 0.76,
+  heightWeight: -0.51,
+  holesWeight: -0.36,
+  bumpinessWeight: -0.18
+};
+
+this.tetrisService.setAIWeights(aggressiveWeights).subscribe({
+  next: () => {
+    console.log('AI configured for aggressive play');
+  }
+});
+```
+
+<Tip>
+**AI weight strategies:**
+
+- **Aggressive**: High lines weight, moderate penalties (high score, higher risk)
+- **Balanced**: Moderate values across all weights (stable gameplay)
+- **Survival**: Low lines weight, high penalties (longest game duration)
+</Tip>
+
+### toggleAutoPlay()
+
+Toggles the AI auto-play mode on the backend.
+
+<ParamField path="Returns" type="Observable<any>">
+  An Observable that completes when auto-play is toggled
+</ParamField>
+
+```typescript
+this.tetrisService.toggleAutoPlay().subscribe({
+  next: () => {
+    console.log('Auto-play toggled');
+  }
+});
+```
+
+## Auto-play management (client-side)
+
+The service provides client-side methods to manage continuous gameplay:
+
+### startAutoPlay()
+
+Starts automatic game progression on the client side.
+
+```typescript
+startAutoPlay(): void {
+  if (this.tetrisService.isAutoPlaying()) {
+    return; // Already running
+  }
+  
+  this.tetrisService.startAutoPlay();
+  console.log('Auto-play started');
+}
+```
+
+<Tip>
+The auto-play runs at 100ms intervals, automatically calling `step()` to advance the game.
+</Tip>
+
+### stopAutoPlay()
+
+Stops the automatic game progression.
+
+```typescript
+stopAutoPlay(): void {
+  this.tetrisService.stopAutoPlay();
+  console.log('Auto-play stopped');
+}
+```
+
+### isAutoPlaying()
+
+Checks if auto-play is currently active.
+
+<ParamField path="Returns" type="boolean">
+  True if auto-play is running, false otherwise
+</ParamField>
+
+```typescript
+if (this.tetrisService.isAutoPlaying()) {
+  console.log('Game is running automatically');
+} else {
+  console.log('Manual mode');
+}
+```
+
+### isGameCreated()
+
+Checks if a game instance has been created.
+
+<ParamField path="Returns" type="boolean">
+  True if a game exists, false otherwise
+</ParamField>
+
+```typescript
+if (!this.tetrisService.isGameCreated()) {
+  this.tetrisService.createGame().subscribe();
+}
+```
+
+## Complete usage example
+
+Here's a complete implementation example:
+
+```typescript game-tetris.component.ts
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { TetrisService } from 'src/app/_services/__Games/TetrisService/tetris.service';
+import { TetrisState, AIWeights } from 'src/app/_models/entity.model';
+
+export class TetrisGameComponent implements OnInit, OnDestroy {
+  board: number[][] = [];
+  score = 0;
+  lines = 0;
+  level = 1;
+  gameOver = false;
+  nextPiece = 0;
+
+  constructor(private tetrisService: TetrisService) {}
+
+  ngOnInit(): void {
+    this.initializeGame();
+  }
+
+  ngOnDestroy(): void {
+    this.tetrisService.stopAutoPlay();
+    this.tetrisService.destroyGame().subscribe();
+  }
+
+  initializeGame(): void {
+    this.tetrisService.createGame().subscribe({
+      next: () => {
+        console.log('Game created successfully');
+        this.loadAIWeights();
+        this.startGameLoop();
+      },
+      error: (err) => console.error('Failed to create game:', err)
+    });
+  }
+
+  loadAIWeights(): void {
+    const balancedWeights: AIWeights = {
+      linesWeight: 0.40,
+      heightWeight: -1.20,
+      holesWeight: -0.80,
+      bumpinessWeight: -0.40
+    };
+
+    this.tetrisService.setAIWeights(balancedWeights).subscribe({
+      next: () => console.log('AI weights configured')
+    });
+  }
+
+  startGameLoop(): void {
+    // Poll game state every 100ms
+    setInterval(() => {
+      if (!this.gameOver) {
+        this.updateGameState();
+      }
+    }, 100);
+  }
+
+  updateGameState(): void {
+    this.tetrisService.getState().subscribe({
+      next: (state: TetrisState | null) => {
+        if (state) {
+          this.board = state.boardMatrix;
+          this.score = state.score;
+          this.lines = state.lines;
+          this.level = state.level;
+          this.nextPiece = state.nextPiece;
+          this.gameOver = state.gameOver;
+        }
+      }
+    });
+  }
+
+  toggleAI(): void {
+    if (this.tetrisService.isAutoPlaying()) {
+      this.tetrisService.stopAutoPlay();
+    } else {
+      this.tetrisService.startAutoPlay();
+    }
+  }
+
+  resetGame(): void {
+    this.tetrisService.stopAutoPlay();
+    this.tetrisService.reset().subscribe({
+      next: () => {
+        this.score = 0;
+        this.lines = 0;
+        this.level = 1;
+        this.gameOver = false;
+      }
+    });
+  }
+
+  manualStep(): void {
+    this.tetrisService.step().subscribe({
+      next: () => this.updateGameState()
+    });
+  }
+}
+```
+
+## AI weight optimization
+
+Different weight configurations produce different gameplay strategies:
+
+<CodeGroup>
+```typescript Aggressive strategy
+const aggressive: AIWeights = {
+  linesWeight: 0.76,      // Prioritize clearing lines
+  heightWeight: -0.51,    // Moderate height penalty
+  holesWeight: -0.36,     // Accept some holes
+  bumpinessWeight: -0.18  // Allow irregular surface
+};
+// Result: Higher scores, shorter games
+```
+
+```typescript Balanced strategy
+const balanced: AIWeights = {
+  linesWeight: 0.40,      // Moderate line clearing
+  heightWeight: -1.20,    // Higher height penalty
+  holesWeight: -0.80,     // Avoid holes
+  bumpinessWeight: -0.40  // Prefer flat surface
+};
+// Result: Moderate scores, stable gameplay
+```
+
+```typescript Survival strategy
+const survival: AIWeights = {
+  linesWeight: 0.20,      // Low priority on lines
+  heightWeight: -2.00,    // Heavily penalize height
+  holesWeight: -1.50,     // Avoid holes at all costs
+  bumpinessWeight: -0.60  // Keep surface very flat
+};
+// Result: Lower scores, very long games
+```
+</CodeGroup>
+
+## API endpoints
+
+The service communicates with the following C++/.NET Core backend endpoints:
+
+- **Create game**: `POST ${apiUrl}/create`
+- **Destroy game**: `POST ${apiUrl}/destroy`
+- **Reset game**: `POST ${apiUrl}/reset`
+- **Step game**: `POST ${apiUrl}/step`
+- **Get state**: `GET ${apiUrl}/state`
+- **Get state with preview**: `GET ${apiUrl}/state-with-preview`
+- **Train AI**: `POST ${apiUrl}/train`
+- **Load AI**: `POST ${apiUrl}/load-ai`
+- **Get AI weights**: `GET ${apiUrl}/ai-weights`
+- **Set AI weights**: `POST ${apiUrl}/ai-weights`
+- **Toggle auto-play**: `POST ${apiUrl}/toggle-auto-play`
+
+## Error handling
+
+The service includes built-in error handling:
+
+```typescript
+private handleError = (error: HttpErrorResponse) => {
+  const message = error.error?.error || error.message || 'Unknown error';
+  console.error('Tetris API Error:', message);
+  return throwError(() => new Error(message));
+};
+```
+
+Always handle errors in your subscriptions:
+
+```typescript
+this.tetrisService.createGame().subscribe({
+  next: (result) => {
+    // Handle success
+  },
+  error: (error) => {
+    if (error.message.includes('Game not created')) {
+      // Handle game creation error
+    } else if (error.message.includes('Connection')) {
+      // Handle connection error
+    } else {
+      console.error('Unexpected error:', error);
+    }
+  }
+});
+```
+
+## See also
+
+- [Game services overview](/services/overview)
+- [Sudoku service](/services/sudoku-service)
+- [Configuration service](/services/config-service)

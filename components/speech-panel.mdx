@@ -1,0 +1,439 @@
+---
+title: Speech panel component
+description: Reusable component for speech recognition and text-to-speech functionality
+---
+
+The SpeechPanelComponent provides a user interface for speech recognition and text-to-speech capabilities. It acts as a control panel with buttons for starting/stopping voice recognition, speaking text, and clearing form content.
+
+## Overview
+
+This standalone component offers:
+- Voice recognition controls (start/stop listening)
+- Text-to-speech functionality
+- Form clearing capability
+- Visual feedback during listening state
+- Error state handling
+
+## Component metadata
+
+```typescript
+@Component({
+  selector: 'app-speech-panel',
+  templateUrl: './speech-panel.component.html',
+  styleUrl: './speech-panel.component.css',
+  standalone: true
+})
+```
+
+Location: `src/app/_components/speech-panel/speech-panel.component.ts:4-9`
+
+<Note>
+This is a standalone component and can be imported directly without a module declaration.
+</Note>
+
+## Properties
+
+### Icon assets
+
+```typescript
+ListeningButtonIconOn: string = './assets/images/mic_on.gif';
+ListeningButtonIconOff: string = './assets/images/mic_off.gif';
+SpeakerIcon: string = './assets/images/speaker_on.gif';
+clearFormIcon: string = './assets/images/clearForm.gif';
+```
+
+Location: `speech-panel.component.ts:12-15`
+
+These properties define the paths to icon assets used in the control panel buttons.
+
+### Event emitters
+
+<Tabs>
+  <Tab title="clickEventSpeak">
+    ```typescript
+    @Output() clickEventSpeak = new EventEmitter<string>();
+    ```
+    
+    Emits when the speak button is clicked, passing the text to be spoken.
+    
+    Location: `speech-panel.component.ts:16`
+  </Tab>
+  <Tab title="clickEventClearText">
+    ```typescript
+    @Output() clickEventClearText = new EventEmitter<void>();
+    ```
+    
+    Emits when the clear button is clicked, signaling the parent component to clear form data.
+    
+    Location: `speech-panel.component.ts:17`
+  </Tab>
+</Tabs>
+
+## Constructor
+
+Injects the SpeechService for speech functionality:
+
+```typescript
+constructor(public speechService: SpeechService) {}
+```
+
+Location: `speech-panel.component.ts:19-22`
+
+## Methods
+
+### speakText()
+
+Triggers text-to-speech functionality and emits the spoken text to the parent component.
+
+```typescript
+speakText(): void
+```
+
+Location: `speech-panel.component.ts:24-30`
+
+<CodeGroup>
+```typescript Implementation
+speakText(): void {
+  this.clickEventSpeak.emit(this.speechService.speakText());
+}
+```
+</CodeGroup>
+
+**Process:**
+
+<Steps>
+  <Step title="Invoke speech service">
+    Calls `speechService.speakText()` to speak the current text
+  </Step>
+  <Step title="Emit event">
+    Emits the text through `clickEventSpeak` for parent component handling
+  </Step>
+</Steps>
+
+### clearText()
+
+Emits an event to clear form text in the parent component.
+
+```typescript
+clearText(): void
+```
+
+Location: `speech-panel.component.ts:32-37`
+
+<CodeGroup>
+```typescript Implementation
+clearText(): void {
+  this.clickEventClearText.emit();
+}
+```
+</CodeGroup>
+
+## Template structure
+
+The component renders a control panel with four buttons and status feedback:
+
+```html
+<div>
+  <button (click)="this.speechService.startListening()" [disabled]="this.speechService.isListening">
+    <img class="imgSearch" [src]="this.ListeningButtonIconOn">
+  </button>
+  
+  <button (click)="this.speechService.stopListening()" [disabled]="!this.speechService.isListening">
+    <img class="imgSearch" [src]="this.ListeningButtonIconOff">
+  </button>
+  
+  <button (click)="this.speakText()" [disabled]="this.speechService.isListening">
+    <img class="imgSearch" [src]="this.SpeakerIcon">
+  </button>
+  
+  <button (click)="this.clearText()">
+    <img class="imgSearch" [src]="this.clearFormIcon" alt="new search">
+  </button>
+</div>
+```
+
+Location: `speech-panel.component.html:1-6`
+
+### Button states
+
+<CardGroup cols={2}>
+  <Card title="Start listening" icon="microphone">
+    Disabled when `speechService.isListening` is true
+  </Card>
+  <Card title="Stop listening" icon="microphone-slash">
+    Disabled when `speechService.isListening` is false
+  </Card>
+  <Card title="Speak text" icon="volume-high">
+    Disabled when `speechService.isListening` is true
+  </Card>
+  <Card title="Clear form" icon="eraser">
+    Always enabled
+  </Card>
+</CardGroup>
+
+### Status feedback
+
+The template displays real-time status information:
+
+```html
+<div>
+  @if ((this.speechService.isListening) && (!this.speechService.error)) {
+    <span class="col col-form-label">[Listening...]</span>
+  }
+  
+  @if (this.speechService.error) {
+    <span class="col col-form-label" class="error">
+      <p>Error: {{ this.speechService.error }}</p>
+    </span>
+  }
+</div>
+```
+
+Location: `speech-panel.component.html:7-16`
+
+<Note>
+The template uses Angular's new control flow syntax (`@if`) for conditional rendering.
+</Note>
+
+## Usage
+
+### Importing the component
+
+Since this is a standalone component, import it directly:
+
+```typescript
+import { SpeechPanelComponent } from './path/to/speech-panel/speech-panel.component';
+
+@Component({
+  selector: 'app-my-component',
+  standalone: true,
+  imports: [SpeechPanelComponent],
+  // ...
+})
+export class MyComponent {
+  // ...
+}
+```
+
+### Using in templates
+
+```html
+<app-speech-panel
+  (clickEventSpeak)="onSpeakText($event)"
+  (clickEventClearText)="onClearText()">
+</app-speech-panel>
+```
+
+### Handling events in parent component
+
+<CodeGroup>
+```typescript Event handlers
+export class ParentComponent {
+  onSpeakText(text: string): void {
+    console.log('Speaking:', text);
+    // Handle spoken text
+  }
+  
+  onClearText(): void {
+    // Clear form fields or reset state
+    this.formData = '';
+  }
+}
+```
+</CodeGroup>
+
+## Integration example
+
+Complete example showing integration with a form:
+
+<Tabs>
+  <Tab title="Parent component">
+    ```typescript
+    import { Component } from '@angular/core';
+    import { SpeechPanelComponent } from './speech-panel/speech-panel.component';
+    import { FormsModule } from '@angular/forms';
+    
+    @Component({
+      selector: 'app-search-form',
+      standalone: true,
+      imports: [SpeechPanelComponent, FormsModule],
+      template: `
+        <div class="search-container">
+          <input [(ngModel)]="searchText" type="text" placeholder="Enter search query">
+          
+          <app-speech-panel
+            (clickEventSpeak)="handleSpeak($event)"
+            (clickEventClearText)="handleClear()">
+          </app-speech-panel>
+          
+          <button (click)="search()">Search</button>
+        </div>
+      `
+    })
+    export class SearchFormComponent {
+      searchText: string = '';
+      
+      handleSpeak(text: string): void {
+        console.log('Spoken text:', text);
+        // Optionally update searchText with spoken content
+      }
+      
+      handleClear(): void {
+        this.searchText = '';
+      }
+      
+      search(): void {
+        console.log('Searching for:', this.searchText);
+        // Perform search
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="With signals">
+    ```typescript
+    import { Component, signal } from '@angular/core';
+    import { SpeechPanelComponent } from './speech-panel/speech-panel.component';
+    
+    @Component({
+      selector: 'app-search-form',
+      standalone: true,
+      imports: [SpeechPanelComponent],
+      template: `
+        <div>
+          <p>Search query: {{ searchText() }}</p>
+          
+          <app-speech-panel
+            (clickEventSpeak)="handleSpeak($event)"
+            (clickEventClearText)="handleClear()">
+          </app-speech-panel>
+        </div>
+      `
+    })
+    export class SearchFormComponent {
+      searchText = signal<string>('');
+      
+      handleSpeak(text: string): void {
+        this.searchText.set(text);
+      }
+      
+      handleClear(): void {
+        this.searchText.set('');
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## SpeechService integration
+
+The component relies on the SpeechService for core functionality:
+
+### Service properties
+
+```typescript
+interface SpeechService {
+  isListening: boolean;        // Current listening state
+  error: string | null;        // Error message if any
+  
+  startListening(): void;      // Start voice recognition
+  stopListening(): void;       // Stop voice recognition
+  speakText(): string;         // Speak and return current text
+}
+```
+
+### State management
+
+The component's UI automatically reflects the service state:
+
+<CodeGroup>
+```typescript State-based button disabling
+// Start button disabled when listening
+[disabled]="this.speechService.isListening"
+
+// Stop button disabled when not listening
+[disabled]="!this.speechService.isListening"
+
+// Speak button disabled during listening
+[disabled]="this.speechService.isListening"
+```
+</CodeGroup>
+
+## Styling considerations
+
+The component uses these CSS classes:
+
+- `.imgSearch` - Applied to button images
+- `.col.col-form-label` - Status text styling
+- `.error` - Error message styling
+
+Customize these in your global styles or component styles:
+
+```css
+.imgSearch {
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.col-form-label {
+  font-size: 14px;
+  color: #333;
+}
+
+.error {
+  color: #dc3545;
+  font-weight: bold;
+}
+```
+
+## Accessibility
+
+<AccordionGroup>
+  <Accordion title="Keyboard navigation">
+    All buttons are keyboard-accessible through standard tab navigation and can be activated with Enter or Space keys.
+  </Accordion>
+  
+  <Accordion title="Screen readers">
+    Add `aria-label` attributes to buttons for better screen reader support:
+    
+    ```html
+    <button 
+      (click)="speechService.startListening()" 
+      [disabled]="speechService.isListening"
+      aria-label="Start voice recognition">
+      <img [src]="ListeningButtonIconOn" alt="Start listening">
+    </button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Visual feedback">
+    The component provides visual feedback through:
+    - Disabled button states
+    - Status text display
+    - Animated GIF icons (when listening)
+  </Accordion>
+</AccordionGroup>
+
+## Use cases
+
+The SpeechPanelComponent is ideal for:
+
+<CardGroup cols={2}>
+  <Card title="Search forms" icon="magnifying-glass">
+    Voice-enabled search interfaces
+  </Card>
+  <Card title="Data entry" icon="keyboard">
+    Hands-free form filling
+  </Card>
+  <Card title="Accessibility" icon="universal-access">
+    Alternative input methods for users with disabilities
+  </Card>
+  <Card title="Mobile apps" icon="mobile">
+    Touch-friendly voice controls
+  </Card>
+</CardGroup>
+
+## Related components
+
+- [Chart component](/components/chart) - Uses speech feedback for PDF generation
+- [File generation](/components/file-generation) - Integration with voice-enabled forms

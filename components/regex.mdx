@@ -1,0 +1,460 @@
+---
+title: RegEx evaluation component
+description: Interactive regular expression evaluation tool for searching XML content with multi-language backend support
+---
+
+## Overview
+
+The `AlgorithmRegExComponent` is an interactive tool for learning and testing regular expressions. It loads XML data, allows users to search for specific elements with custom content, and displays the generated regular expression pattern along with highlighted matches.
+
+## Component properties
+
+### State properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `xmlData` | `string` | Complete XML content loaded from backend |
+| `pattern` | `string` | Generated regular expression pattern |
+| `__languajeList` | `any[]` | Available backend language options |
+| `tituloListadoLenguajes` | `string` | Label for language selector ("BACKEND") |
+
+### ViewChild references
+
+| Reference | Description |
+|-----------|-------------|
+| `mensajes` | Display div for XML content with highlighted matches |
+| `tagSearch` | Dropdown for XML element selection |
+| `textSearch` | Input field for search content |
+| `regExSearch` | Read-only input showing generated regex pattern |
+| `_languajeList` | Dropdown for backend language selection |
+
+## Key methods
+
+### Data loading
+
+#### `_GetXMLData()`
+
+Loads sample XML data from the backend service.
+
+```typescript
+_GetXMLData(): void
+```
+
+**Behavior:**
+- Calls backend service to fetch XML content
+- Clears previous search results
+- Displays XML in the content area
+- Resets the pattern field
+- Updates status message
+
+**Example usage:**
+```html
+<input class="btn btn-success" 
+       type="button" 
+       value="[RESTART]" 
+       (click)="_GetXMLData()">
+```
+
+Source: `algorithm-reg-ex.component.ts:100`
+
+### Search operations
+
+#### `GetRegex()`
+
+Executes a regular expression search on the XML content.
+
+```typescript
+GetRegex(): void
+```
+
+**Behavior:**
+- Validates that a language is selected
+- Validates that an element is selected
+- Validates that search content is provided
+- Sends request to backend with element type and search text
+- Receives: match count, highlighted XML, and regex pattern
+- Updates display with results
+
+**Validation messages:**
+- "PLEASE SELECT A LANGUAGE" - No backend selected
+- "PLEASE SELECT AN ELEMENT TO SEARCH" - No element selected
+- "PLEASE ENTER A VALUE IN THE FIELD [CONTENT]" - Empty search text
+
+**Example usage:**
+```html
+<input class="btn btn-primary" 
+       type="button" 
+       value="[SEARCH]" 
+       (click)="GetRegex()">
+```
+
+Source: `algorithm-reg-ex.component.ts:148`
+
+## Backend integration
+
+The component supports multiple backend implementations:
+
+### C# (.NET Core)
+
+```typescript
+regExInfo = this.algorithmService._RegExEval(tagSearchIndex, textSearchValue);
+```
+
+Source: `algorithm-reg-ex.component.ts:186`
+
+### C++
+
+```typescript
+regExInfo = this.algorithmService._RegExEval_CPP(tagSearchIndex, textSearchValue);
+```
+
+Source: `algorithm-reg-ex.component.ts:190`
+
+## Response format
+
+The backend returns data separated by `|`:
+
+**Format:**
+```
+{match_count}|{highlighted_xml}|{regex_pattern}
+```
+
+**Example:**
+```
+3|<xml>...highlighted content...</xml>|<company>.*Columbia.*</company>
+```
+
+**Response components:**
+
+1. **Match count** - Number of matches found (e.g., "3")
+2. **Highlighted XML** - XML with matches wrapped in highlight tags
+3. **Regex pattern** - The generated regular expression
+
+Source: `algorithm-reg-ex.component.ts:205`
+
+## Searchable XML elements
+
+The component supports searching these XML elements:
+
+| Value | Element | Example |
+|-------|---------|----------|
+| `0` | (CHOOSE OPTION...) | - |
+| `title` | Title | `<title>Empire Burlesque</title>` |
+| `artist` | Artist | `<artist>Bob Dylan</artist>` |
+| `country` | Country | `<country>USA</country>` |
+| `company` | Company | `<company>Columbia</company>` |
+| `price` | Price | `<price>10.90</price>` |
+| `year` | Year | `<year>1985</year>` |
+
+Source: `algorithm-reg-ex.component.html:28`
+
+## Regular expressions explained
+
+### What are regular expressions?
+
+Regular expressions (regex) are patterns used to match character combinations in strings. They're powerful tools for:
+
+- Searching text
+- Validating input formats
+- Extracting data from documents
+- Text transformation
+
+### Common regex patterns
+
+**Literal match:**
+```regex
+Columbia
+```
+Matches exactly "Columbia"
+
+**Wildcard:**
+```regex
+.*
+```
+Matches any character (.) zero or more times (*)
+
+**Element with content:**
+```regex
+<company>.*Columbia.*</company>
+```
+Matches `<company>` tags containing "Columbia"
+
+**Case-insensitive:**
+```regex
+(?i)columbia
+```
+Matches "Columbia", "COLUMBIA", "columbia", etc.
+
+**Word boundary:**
+```regex
+\bUSA\b
+```
+Matches "USA" as a whole word, not within other words
+
+### XML-specific patterns
+
+When searching XML, the backend generates patterns like:
+
+**Search for company "Columbia":**
+```regex
+<company>.*Columbia.*</company>
+```
+
+**Search for year "1985":**
+```regex
+<year>.*1985.*</year>
+```
+
+**Search for artist containing "Bob":**
+```regex
+<artist>.*Bob.*</artist>
+```
+
+<Note>
+The backend automatically generates the appropriate regex pattern based on your element selection and search text. The pattern is displayed in the read-only "REGULAR EXPRESSION" field.
+</Note>
+
+## Pattern decoding
+
+The component uses `UtilManager.DebugHostingContent()` to decode HTML entities in the pattern:
+
+```typescript
+this.pattern = UtilManager.DebugHostingContent(resultArray[2]);
+```
+
+This converts:
+- `&lt;` → `<`
+- `&gt;` → `>`
+- `&amp;` → `&`
+- Other HTML entities to their character equivalents
+
+Source: `algorithm-reg-ex.component.ts:215`
+
+## Highlighting matches
+
+The backend returns XML with matched content highlighted using HTML tags. The exact highlighting implementation depends on the backend, but typically wraps matches in `<mark>` or `<span>` tags with special styling.
+
+**Example:**
+```html
+<company><mark style="background-color: yellow;">Columbia</mark></company>
+```
+
+## Usage example
+
+### Template
+
+```html
+<div class="content">
+  <app-base-reference></app-base-reference>
+  <hr>
+  
+  <!-- XML content display -->
+  <p>[CONTENT TO SEARCH]</p>
+  <div id="XmlContent">
+    <div id="global">
+      <div #mensajes></div>
+    </div>
+  </div>
+  
+  <hr>
+  
+  <form>
+    <!-- Backend language selection -->
+    <div class="form-group">
+      <label>{{tituloListadoLenguajes}}</label>
+      <select #_languajeList class="fieldSetRegex">
+        @for (_languageName of __languajeList; track _languageName) {
+          <option [value]="_languageName._index"
+                  [selected]="_languageName._selected">
+            {{_languageName._value}}
+          </option>
+        }
+      </select>
+    </div>
+    
+    <!-- Element selection -->
+    <div class="form-group">
+      <label for="tagSearch">ELEMENT TO SEARCH:</label>
+      <select #tagSearch class="fieldSetRegex">
+        <option value="0">(CHOOSE OPTION ...)</option>
+        <option value="title">title</option>
+        <option value="artist">artist</option>
+        <option value="country">country</option>
+        <option value="company" selected>company</option>
+        <option value="price">price</option>
+        <option value="year">year</option>
+      </select>
+    </div>
+    
+    <!-- Search content input -->
+    <div class="form-group">
+      <label for="textSearch">CONTENT:</label>
+      <input type="text" #textSearch class="fieldSetRegex">
+    </div>
+    
+    <!-- Generated regex pattern (read-only) -->
+    <div class="form-group">
+      <label for="regExSearch">REGULAR EXPRESSION:</label>
+      <input type="text" 
+             #regExSearch 
+             class="fieldSetRegex" 
+             [value]="pattern" 
+             readonly
+             style="background-color: #cccccc;">
+    </div>
+    
+    <!-- Status message -->
+    @if (status_message()) {
+      <div class="alert alert-secondary">
+        {{ status_message() }}
+      </div>
+    }
+    
+    <!-- Control buttons -->
+    <div class="form-group">
+      <input class="btn btn-primary" 
+             type="button" 
+             value="[SEARCH]" 
+             (click)="GetRegex()">
+      <input class="btn btn-success" 
+             type="button" 
+             value="[RESTART]" 
+             (click)="_GetXMLData()">
+    </div>
+  </form>
+</div>
+```
+
+### Component declaration
+
+```typescript
+import { Component, OnInit, AfterViewInit, ViewChild } from '@angular/core';
+import { AlgorithmService } from 'src/app/_services/AlgorithmService/algorithm.service';
+import { UtilManager } from 'src/app/_engines/util.engine';
+
+@Component({
+  selector: 'app-algorithm-reg-ex',
+  templateUrl: './algorithm-reg-ex.component.html',
+  styleUrls: ['./algorithm-reg-ex.component.css'],
+  standalone: false
+})
+export class AlgorithmRegExComponent extends BaseComponent 
+  implements OnInit, AfterViewInit {
+  // Implementation
+}
+```
+
+## Sample XML structure
+
+The backend provides an XML document with a structure similar to:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog>
+  <cd>
+    <title>Empire Burlesque</title>
+    <artist>Bob Dylan</artist>
+    <country>USA</country>
+    <company>Columbia</company>
+    <price>10.90</price>
+    <year>1985</year>
+  </cd>
+  <cd>
+    <title>Hide your heart</title>
+    <artist>Bonnie Tyler</artist>
+    <country>UK</country>
+    <company>CBS Records</company>
+    <price>9.90</price>
+    <year>1988</year>
+  </cd>
+  <!-- More CD entries... -->
+</catalog>
+```
+
+## Workflow
+
+1. **Load Data**: Component initializes and loads XML from backend
+2. **Select Backend**: User chooses C# or C++ backend
+3. **Choose Element**: User selects which XML element to search (company, artist, etc.)
+4. **Enter Content**: User types the text to search for
+5. **Execute Search**: User clicks "[SEARCH]"
+6. **View Results**: 
+   - Status shows match count (e.g., "[3] MATCHES FOUND")
+   - XML displays with matches highlighted
+   - Regex pattern appears in the read-only field
+7. **Restart**: User can click "[RESTART]" to reload original XML
+
+## Educational value
+
+### Learning outcomes
+
+This component teaches:
+
+1. **Regex fundamentals** - See how patterns are constructed
+2. **XML structure** - Understand element-based documents
+3. **Pattern matching** - Observe how regex finds matches
+4. **Backend integration** - Different languages can process the same data
+
+### Example searches to try
+
+**Find all Columbia records:**
+- Element: `company`
+- Content: `Columbia`
+- Pattern: `<company>.*Columbia.*</company>`
+
+**Find records from 1985:**
+- Element: `year`
+- Content: `1985`
+- Pattern: `<year>.*1985.*</year>`
+
+**Find artists with "Bob" in name:**
+- Element: `artist`
+- Content: `Bob`
+- Pattern: `<artist>.*Bob.*</artist>`
+
+**Find USA releases:**
+- Element: `country`
+- Content: `USA`
+- Pattern: `<country>.*USA.*</country>`
+
+<Info>
+Try partial matches! Searching for "Col" in the company field will match "Columbia", "Capitol", and any other company name containing those letters.
+</Info>
+
+## Dependencies
+
+- `AlgorithmService` - Backend communication for XML data and regex evaluation
+- `UtilManager` - Utility functions for HTML entity decoding
+- `BaseComponent` - Base component with common functionality
+
+## Technical notes
+
+### Query parameters support
+
+The component supports pre-selecting a backend language via query parameters:
+
+```typescript
+this.route.queryParams.subscribe(params => {
+  let langName = params['langName'] ? params['langName'] : "";
+  // Auto-select matching language
+});
+```
+
+**Example URL:**
+```
+/algorithm-regex?langName=CPP
+```
+
+This will pre-select the C++ backend.
+
+Source: `algorithm-reg-ex.component.ts:71`
+
+### Default selection
+
+If no query parameter is provided, C# (.NET Core) is selected by default:
+
+```typescript
+this.__languajeList[1]._selected = true; // C#
+```
+
+Source: `algorithm-reg-ex.component.ts:96`

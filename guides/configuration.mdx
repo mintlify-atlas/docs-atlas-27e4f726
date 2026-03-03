@@ -1,0 +1,528 @@
+---
+title: Configuration guide
+description: Learn how to configure your Angular 21 PWA application including build settings, environment variables, and external configuration
+---
+
+## Overview
+
+The Angular PWA Demo uses a flexible configuration system that supports multiple environments, external JSON configuration files, and build-time settings.
+
+## Configuration architecture
+
+The application uses a multi-layered configuration approach:
+
+<Steps>
+  <Step title="Build configuration">
+    `angular.json` defines build settings, assets, and optimization levels
+  </Step>
+  <Step title="Environment files">
+    TypeScript environment files for compile-time configuration
+  </Step>
+  <Step title="External JSON config">
+    Runtime configuration loaded from `assets/config/config.json`
+  </Step>
+  <Step title="ConfigService">
+    Centralized service for accessing configuration values
+  </Step>
+</Steps>
+
+## Angular.json configuration
+
+The main build configuration is in `angular.json`:
+
+```json
+{
+  "projects": {
+    "AngularDijkstra": {
+      "projectType": "application",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "allowedCommonJsDependencies": [
+              "three",
+              "@tweenjs/tween.js"
+            ],
+            "outputPath": {
+              "base": "dist/PWA_DEMO_ENV_PROD/"
+            },
+            "index": "src/index.html",
+            "polyfills": [
+              "zone.js",
+              "@angular/localize/init"
+            ],
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              "src/manifest.webmanifest"
+            ],
+            "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
+              "@angular/material/prebuilt-themes/indigo-pink.css",
+              "src/styles.css"
+            ],
+            "scripts": [],
+            "serviceWorker": "ngsw-config.json",
+            "browser": "src/main.ts"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Key configuration options
+
+<AccordionGroup>
+  <Accordion title="allowedCommonJsDependencies">
+    Allows CommonJS modules that would otherwise trigger warnings. Used for Three.js and Tween.js compatibility.
+  </Accordion>
+
+  <Accordion title="outputPath">
+    Specifies where build artifacts are generated. Set to `dist/PWA_DEMO_ENV_PROD/` for GitHub Pages deployment.
+  </Accordion>
+
+  <Accordion title="assets">
+    Files and folders copied as-is to the output directory. Includes favicon, static assets, and PWA manifest.
+  </Accordion>
+
+  <Accordion title="styles">
+    Global stylesheets loaded in order. Includes Bootstrap, Material Design theme, and custom styles.
+  </Accordion>
+
+  <Accordion title="serviceWorker">
+    Enables PWA service worker using the configuration in `ngsw-config.json`.
+  </Accordion>
+</AccordionGroup>
+
+## Build configurations
+
+Define different configurations for development and production:
+
+<CodeGroup>
+```json Production
+{
+  "configurations": {
+    "production": {
+      "budgets": [
+        {
+          "type": "initial",
+          "maximumWarning": "2mb",
+          "maximumError": "25mb"
+        },
+        {
+          "type": "anyComponentStyle",
+          "maximumWarning": "5mb",
+          "maximumError": "5mb"
+        }
+      ],
+      "outputHashing": "all"
+    }
+  },
+  "defaultConfiguration": "production"
+}
+```
+
+```json Development
+{
+  "configurations": {
+    "development": {
+      "optimization": false,
+      "extractLicenses": false,
+      "sourceMap": true,
+      "namedChunks": true
+    }
+  }
+}
+```
+</CodeGroup>
+
+<Tip>
+  Use `ng build --configuration development` for faster builds during development with debugging enabled.
+</Tip>
+
+## Runtime configuration with ConfigService
+
+The `ConfigService` loads external JSON configuration at runtime from `src/app/_services/__Utils/ConfigService/config.service.ts:1`:
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { _environment } from 'src/environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ConfigService {
+  constructor(
+    protected http: HttpClient,
+    public route: ActivatedRoute
+  ) {}
+
+  // Load main configuration file
+  loadConfig() {
+    return this.http.get('./assets/config/config.json').toPromise()
+      .then((data: any) => {
+        _environment.externalConfig = data;
+      })
+      .catch(error => {
+        console.error('Error loading configuration:', error);
+      });
+  }
+
+  // Get configuration value by key
+  getConfigValue(key: string) {
+    let jsonData: string = JSON.parse(
+      JSON.stringify(_environment.externalConfig)
+    )[key];
+    return jsonData;
+  }
+
+  // Load page configuration
+  _loadMainPages(): Promise<void> {
+    return new Promise((resolve) => {
+      this.http.get('./assets/config/mainPages.json').toPromise()
+        .then((data: any) => {
+          _environment.mainPageList = data;
+          _environment.mainPageList.forEach((element: MainPage) => {
+            _environment.mainPageListDictionary[element.log_name] = element;
+          });
+          resolve();
+        })
+        .catch(error => {
+          console.error('Error loading configuration:', error);
+        });
+    });
+  }
+}
+```
+
+## External configuration files
+
+Create configuration files in `src/assets/config/`:
+
+### config.json
+
+Main application configuration:
+
+```json
+{
+  "appBrand": "Angular PWA Demo",
+  "appVersion": "1.0.0",
+  "baseUrlNetCore": "https://api.example.com/",
+  "baseUrlNetCoreCPPEntry": "https://cpp-api.example.com/",
+  "baseUrlNodeJs": "https://nodejs-api.example.com/",
+  "baseUrlSpringBootJava": "https://java-api.example.com/",
+  "baseUrlDjangoPython": "https://python-api.example.com/"
+}
+```
+
+### mainPages.json
+
+Page configuration for dynamic routing:
+
+```json
+[
+  {
+    "log_name": "landing",
+    "page_name": "Home",
+    "route": "/",
+    "pages_nested": [
+      {
+        "name": "Dashboard",
+        "route": "/dashboard",
+        "queryParams": "{view: grid}"
+      }
+    ]
+  }
+]
+```
+
+<Warning>
+  External configuration files are loaded at runtime. Don't include sensitive data like API keys - use environment variables instead.
+</Warning>
+
+## Using configuration in components
+
+Inject and use the `ConfigService` with Angular 21's `inject()` function:
+
+```typescript
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { ConfigService } from './_services/__Utils/ConfigService/config.service';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  standalone: false
+})
+export class AppComponent implements OnInit {
+  // Inject ConfigService
+  private readonly _configService = inject(ConfigService);
+
+  // Reactive state with signals
+  public readonly appBrand = signal<string>('');
+  public readonly appVersion = signal<string>('');
+
+  ngOnInit(): void {
+    this.initializeConfig();
+  }
+
+  private initializeConfig(): void {
+    // Get values from configuration
+    const brand = this._configService.getConfigValue('appBrand') ?? 'App';
+    const version = this._configService.getConfigValue('appVersion') ?? '1.0.0';
+
+    // Update signals
+    this.appBrand.set(brand);
+    this.appVersion.set(version);
+  }
+}
+```
+
+## Application initialization
+
+Load configuration before the app starts using `APP_INITIALIZER`:
+
+```typescript
+import { APP_INITIALIZER, ApplicationConfig } from '@angular/core';
+import { ConfigService } from './services/config.service';
+
+export function initializeApp(configService: ConfigService) {
+  return (): Promise<void> => {
+    return configService.loadConfig();
+  };
+}
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeApp,
+      deps: [ConfigService],
+      multi: true
+    }
+  ]
+};
+```
+
+<Tip>
+  Using `APP_INITIALIZER` ensures configuration is loaded before any components are initialized.
+</Tip>
+
+## Environment-specific configuration
+
+Create different config files for each environment:
+
+```
+src/assets/config/
+├── config.json          # Default configuration
+├── config.dev.json      # Development overrides
+├── config.staging.json  # Staging environment
+└── config.prod.json     # Production settings
+```
+
+Load the appropriate file based on environment:
+
+```typescript
+loadConfig(environment: string = 'prod') {
+  const configFile = `./assets/config/config.${environment}.json`;
+  return this.http.get(configFile).toPromise()
+    .then((data: any) => {
+      _environment.externalConfig = data;
+    })
+    .catch(error => {
+      console.error('Error loading configuration:', error);
+      // Fallback to default config
+      return this.http.get('./assets/config/config.json').toPromise();
+    });
+}
+```
+
+## TypeScript configuration
+
+The project uses strict TypeScript settings in `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "lib": ["ES2022", "dom"],
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+## PWA configuration
+
+Configure the Progressive Web App features in `src/manifest.webmanifest`:
+
+```json
+{
+  "name": "Angular PWA Demo",
+  "short_name": "PWA Demo",
+  "theme_color": "#1976d2",
+  "background_color": "#fafafa",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "assets/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ]
+}
+```
+
+## Service worker caching
+
+Configure caching strategies in `ngsw-config.json`:
+
+```json
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**",
+          "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Caching strategies
+
+<CardGroup cols={2}>
+  <Card title="Prefetch" icon="download">
+    Download resources during installation for instant availability
+  </Card>
+  <Card title="Lazy" icon="hourglass">
+    Cache resources only when first requested
+  </Card>
+</CardGroup>
+
+## Query parameters
+
+The `ConfigService` includes a utility for reading URL query parameters:
+
+```typescript
+queryUrlParams(paraName: string): string {
+  let returnValue = "";
+  this.route.queryParams.subscribe(params => {
+    returnValue = params[paraName] ? params[paraName] : "";
+  });
+  return returnValue;
+}
+```
+
+Usage in components:
+
+```typescript
+const userId = this._configService.queryUrlParams('userId');
+const mode = this._configService.queryUrlParams('mode');
+```
+
+## Utility functions
+
+The `ConfigService` provides helper utilities:
+
+### Generate GUID
+
+```typescript
+generateGuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0;
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+```
+
+Usage:
+
+```typescript
+const uniqueId = this._configService.generateGuid();
+// Output: "a1b2c3d4-e5f6-4789-a012-b3c4d5e6f7g8"
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Use APP_INITIALIZER for critical config">
+    Load essential configuration before the app starts to prevent race conditions.
+  </Accordion>
+
+  <Accordion title="Provide sensible defaults">
+    Always use the nullish coalescing operator (`??`) when reading config values.
+  </Accordion>
+
+  <Accordion title="Keep sensitive data out of config files">
+    Never commit API keys, secrets, or credentials. Use environment variables or secret management.
+  </Accordion>
+
+  <Accordion title="Version your configuration">
+    Include an `appVersion` field to track configuration changes.
+  </Accordion>
+
+  <Accordion title="Validate configuration">
+    Add runtime validation to ensure required config values are present.
+  </Accordion>
+
+  <Accordion title="Use TypeScript interfaces">
+    Define interfaces for configuration objects to get type checking and IntelliSense.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment guide" icon="rocket" href="/guides/deployment">
+    Learn how to deploy your application
+  </Card>
+  <Card title="Services guide" icon="gear" href="/guides/services">
+    Create and use services
+  </Card>
+</CardGroup>

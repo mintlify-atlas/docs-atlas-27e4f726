@@ -1,0 +1,791 @@
+---
+title: Tetris
+description: Classic Tetris game with manual play and advanced AI solver using genetic algorithm optimization
+---
+
+## Overview
+
+This Tetris implementation includes both a traditional player-controlled variant and an advanced AI version that uses genetic algorithm-based heuristics to automatically play and optimize gameplay. Both versions feature smooth animations, progressive difficulty, and score tracking.
+
+## Components
+
+### GameTetrisComponent
+
+**Selector:** `app-game-tetris`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-tetris/game-tetris.component.ts`
+
+Player-controlled Tetris with keyboard controls.
+
+### GameTetrisAIComponent
+
+**Selector:** `app-game-tetris-ai`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-tetris-ai/game-tetris-ai.component.ts`
+
+AI-controlled Tetris with multiple strategy modes and real-time weight adjustments.
+
+## Key features
+
+### Manual play
+- **7 Tetromino types** - I, O, T, S, Z, J, L pieces with authentic shapes
+- **Keyboard controls** - Arrow keys for movement, rotation, and drop
+- **Mobile support** - Touch controls for mobile devices
+- **Progressive difficulty** - Speed increases with level
+- **Line clearing** - Standard Tetris scoring with combo bonuses
+- **Next piece preview** - See upcoming tetromino
+- **Game loop** - 500ms tick interval (adjustable)
+
+### AI play
+- **Genetic algorithm heuristics** - Optimized weights for AI decision-making
+- **Multiple AI modes** - Aggressive, Balanced, and Survival strategies
+- **Real-time weight tuning** - Adjust AI behavior during gameplay
+- **Board evaluation** - Analyzes height, holes, bumpiness, and line potential
+- **Move planning** - Tests all rotations and positions to find optimal placement
+- **Smooth animations** - Tween-based piece movements with rotation
+- **Visual feedback** - See AI thinking process in action
+
+## Signal-based architecture (Angular v21)
+
+Both components use Angular Signals for reactive state management:
+
+```typescript
+// Manual Tetris
+private board = signal<string[][]>([]);                // 10x20 grid
+private currentPiece = signal<Position[]>([]);         // Active piece
+private currentColor = signal<string>('');             // Piece color
+private lockedScore = signal<number>(0);               // Player score
+private lockedGameOver = signal<boolean>(false);       // Game state
+
+// Computed signals (auto-update)
+readonly displayBoard = computed(() => /* board + piece */);
+readonly score = computed(() => this.lockedScore());
+readonly gameOver = computed(() => this.lockedGameOver());
+
+// AI Tetris
+private _state = signal<TetrisState>({ /* ... */ });   // Complete game state
+private _aiWeights = signal<AIWeights>({ /* ... */ }); // AI parameters
+
+// Computed AI signals
+readonly boardMatrix = computed(() => this._state().boardMatrix);
+readonly score = computed(() => this._state().score);
+readonly linesWeight = computed(() => this._aiWeights().linesWeight);
+```
+
+## Tetromino shapes
+
+```typescript
+const TETROMINOS: Record<TetrominoType, Tetromino> = {
+  I: { 
+    shape: [[1, 1, 1, 1]], 
+    color: '#00f0f0' // Cyan
+  },
+  O: { 
+    shape: [[1, 1], [1, 1]], 
+    color: '#f0f000' // Yellow
+  },
+  T: { 
+    shape: [[0, 1, 0], [1, 1, 1]], 
+    color: '#a000f0' // Purple
+  },
+  S: { 
+    shape: [[0, 1, 1], [1, 1, 0]], 
+    color: '#00f000' // Green
+  },
+  Z: { 
+    shape: [[1, 1, 0], [0, 1, 1]], 
+    color: '#f00000' // Red
+  },
+  J: { 
+    shape: [[1, 0, 0], [1, 1, 1]], 
+    color: '#0000f0' // Blue
+  },
+  L: { 
+    shape: [[0, 0, 1], [1, 1, 1]], 
+    color: '#f0a000' // Orange
+  }
+};
+```
+
+## Usage examples
+
+### Manual Tetris
+
+```html
+<div class="tetris-game">
+  <!-- Game board -->
+  <div class="board">
+    <div 
+      *ngFor="let row of displayBoard(); let y = index" 
+      class="row">
+      <div 
+        *ngFor="let cell of row; let x = index"
+        class="cell"
+        [style.background-color]="cell || '#1a1a1a'">
+      </div>
+    </div>
+  </div>
+  
+  <!-- Game info -->
+  <div class="info">
+    <div class="score">
+      <h3>Score</h3>
+      <p>{{ score() }}</p>
+    </div>
+    
+    <div class="controls">
+      <button (click)="startGame()" [disabled]="isPlaying()">
+        Start
+      </button>
+      <button (click)="resetGame()">
+        Reset
+      </button>
+    </div>
+    
+    <!-- Keyboard help -->
+    <div class="help" *ngIf="!isMobile()">
+      <h4>Controls</h4>
+      <ul>
+        <li>← → : Move</li>
+        <li>↑ : Rotate</li>
+        <li>↓ : Soft drop</li>
+        <li>Space : Hard drop</li>
+      </ul>
+    </div>
+    
+    <!-- Mobile controls -->
+    <div class="mobile-controls" *ngIf="isMobile()">
+      <button (click)="moveLeft()">←</button>
+      <button (click)="rotate()">↻</button>
+      <button (click)="moveRight()">→</button>
+      <button (click)="drop()">Drop</button>
+    </div>
+  </div>
+  
+  <!-- Game over message -->
+  <div class="game-over" *ngIf="gameOver()">
+    <h2>Game Over</h2>
+    <p>Final Score: {{ score() }}</p>
+    <button (click)="resetGame()">Play Again</button>
+  </div>
+</div>
+```
+
+### AI Tetris
+
+```html
+<div class="tetris-ai">
+  <!-- Game board with current piece -->
+  <div class="board-container">
+    <!-- Background board -->
+    <div class="board">
+      <div *ngFor="let row of boardMatrix(); let y = index" class="row">
+        <div 
+          *ngFor="let cell of row; let x = index"
+          class="cell"
+          [class.filled]="cell > 0"
+          [style.background-color]="getPieceColor(cell)">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Animated current piece -->
+    <div 
+      class="current-piece"
+      [style.top.px]="getPieceTopPx()"
+      [style.left.px]="getPieceLeftPx()"
+      [style.transform]="'rotate(' + currentPieceRotation + 'deg)'"
+      [style.transform-origin]="getRotationOrigin()"
+      [class.animating]="animating">
+      <div 
+        *ngFor="let row of getPieceMatrix(currentPieceType); let y = index" 
+        class="piece-row">
+        <div 
+          *ngFor="let cell of row; let x = index"
+          class="piece-cell"
+          [class.filled]="cell === 1"
+          [style.background-color]="getPieceColor(currentPieceType)">
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- AI controls -->
+  <div class="ai-controls">
+    <div class="game-info">
+      <div>Score: {{ score() }}</div>
+      <div>Lines: {{ lines() }}</div>
+      <div>Level: {{ level() }}</div>
+    </div>
+    
+    <!-- Next piece preview -->
+    <div class="next-piece">
+      <h4>Next</h4>
+      <div class="preview">
+        <div *ngFor="let row of getPieceMatrix(nextPiece()); let y = index">
+          <span 
+            *ngFor="let cell of row" 
+            [class.filled]="cell === 1"
+            [style.background-color]="getPieceColor(nextPiece())">
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Play controls -->
+    <button 
+      (click)="toggleAutoPlay()" 
+      [disabled]="!isGameReady()">
+      {{ tetrisService.isAutoPlaying() ? 'Stop' : 'Auto Play' }}
+    </button>
+    
+    <button (click)="step()" [disabled]="gameOver() || animating">
+      Step
+    </button>
+    
+    <button (click)="reset()">
+      Reset
+    </button>
+    
+    <!-- AI strategy selector -->
+    <div class="strategy">
+      <h4>Strategy</h4>
+      <button 
+        (click)="loadAggressiveWeights()"
+        [class.active]="currentMode() === 'aggressive'">
+        Aggressive
+      </button>
+      <button 
+        (click)="loadBalancedWeights()"
+        [class.active]="currentMode() === 'balanced'">
+        Balanced
+      </button>
+      <button 
+        (click)="loadSurvivalWeights()"
+        [class.active]="currentMode() === 'survival'">
+        Survival
+      </button>
+    </div>
+    
+    <!-- Weight controls (collapsible) -->
+    <button (click)="toggleAiPanel()">
+      {{ showAiPanel() ? 'Hide' : 'Show' }} AI Weights
+    </button>
+    
+    <div *ngIf="showAiPanel()" class="weight-panel">
+      <label>
+        Lines Weight: {{ linesWeight().toFixed(2) }}
+        <input 
+          type="range" 
+          min="-2" 
+          max="2" 
+          step="0.01"
+          [value]="linesWeight()"
+          (input)="setLinesWeight(+$any($event.target).value)" />
+      </label>
+      
+      <label>
+        Height Weight: {{ heightWeight().toFixed(2) }}
+        <input 
+          type="range" 
+          min="-3" 
+          max="0" 
+          step="0.01"
+          [value]="heightWeight()"
+          (input)="setHeightWeight(+$any($event.target).value)" />
+      </label>
+      
+      <label>
+        Holes Weight: {{ holesWeight().toFixed(2) }}
+        <input 
+          type="range" 
+          min="-3" 
+          max="0" 
+          step="0.01"
+          [value]="holesWeight()"
+          (input)="setHolesWeight(+$any($event.target).value)" />
+      </label>
+      
+      <label>
+        Bumpiness Weight: {{ bumpinessWeight().toFixed(2) }}
+        <input 
+          type="range" 
+          min="-2" 
+          max="0" 
+          step="0.01"
+          [value]="bumpinessWeight()"
+          (input)="setBumpinessWeight(+$any($event.target).value)" />
+      </label>
+    </div>
+  </div>
+</div>
+```
+
+## Keyboard controls (manual)
+
+```typescript
+@HostListener('window:keydown', ['$event'])
+handleKeyboardEvent(event: KeyboardEvent) {
+  if (!this.isPlaying() || this.gameOver()) return;
+  
+  switch(event.key) {
+    case 'ArrowLeft':
+      event.preventDefault();
+      this.moveLeft();
+      break;
+      
+    case 'ArrowRight':
+      event.preventDefault();
+      this.moveRight();
+      break;
+      
+    case 'ArrowUp':
+      event.preventDefault();
+      this.rotate();
+      break;
+      
+    case 'ArrowDown':
+      event.preventDefault();
+      this.moveDown();
+      break;
+      
+    case ' ':  // Space bar
+      event.preventDefault();
+      this.drop();  // Hard drop
+      break;
+  }
+}
+```
+
+## AI strategies
+
+<Tabs>
+  <Tab title="Aggressive Mode">
+    **Aggressive AI Weights**
+    
+    Optimized for maximum score. Takes risks to clear multiple lines.
+    
+    ```typescript
+    const AGGRESSIVE_AI_WEIGHTS: AIWeights = {
+      linesWeight:      0.76,   // High priority on clearing lines
+      heightWeight:    -0.51,   // Moderate height penalty
+      holesWeight:     -0.36,   // Accepts some holes for tetris
+      bumpinessWeight: -0.18,   // Low surface smoothness priority
+    };
+    ```
+    
+    **Characteristics:**
+    - High-scoring games
+    - Higher risk of game over
+    - Pursues Tetris opportunities (4-line clears)
+    - Average survival: 200-400 lines
+  </Tab>
+  
+  <Tab title="Balanced Mode">
+    **Balanced AI Weights** (Default)
+    
+    Moderate scoring with longer survival times.
+    
+    ```typescript
+    const BALANCED_AI_WEIGHTS: AIWeights = {
+      linesWeight:      0.40,   // Balanced line clearing
+      heightWeight:    -1.20,   // Strong height control
+      holesWeight:     -0.80,   // Avoids creating holes
+      bumpinessWeight: -0.40,   // Maintains flat surface
+    };
+    ```
+    
+    **Characteristics:**
+    - Moderate scoring
+    - Longer game duration
+    - Consistent performance
+    - Average survival: 400-800 lines
+  </Tab>
+  
+  <Tab title="Survival Mode">
+    **Survival AI Weights**
+    
+    Maximum longevity. Plays conservatively.
+    
+    ```typescript
+    const SURVIVAL_AI_WEIGHTS: AIWeights = {
+      linesWeight:      0.20,   // Low line priority
+      heightWeight:    -2.00,   // Extreme height avoidance
+      holesWeight:     -1.50,   // Never creates holes
+      bumpinessWeight: -0.60,   // Very flat surface
+    };
+    ```
+    
+    **Characteristics:**
+    - Lower scores
+    - Extremely long games
+    - Conservative play
+    - Average survival: 1000+ lines
+  </Tab>
+</Tabs>
+
+## AI algorithm
+
+The AI evaluates every possible placement:
+
+```typescript
+private _findBestPlacement(): { targetX: number; rotationsLeft: number } {
+  let bestScore = -Infinity;
+  let bestX = this.currentX;
+  let bestRotations = 0;
+  let piece = this.currentPiece.map(r => [...r]);
+  
+  // Try all 4 rotations
+  for (let rot = 0; rot < 4; rot++) {
+    const cols = piece[0].length;
+    
+    // Try all horizontal positions
+    for (let x = -1; x <= BOARD_COLS - cols + 1; x++) {
+      // Simulate drop
+      let y = 0;
+      while (this._canPlace(piece, x, y + 1)) y++;
+      
+      if (!this._canPlace(piece, x, y)) continue;
+      
+      // Simulate placement
+      const simBoard = this.board.map(r => [...r]);
+      for (let py = 0; py < piece.length; py++) {
+        for (let px = 0; px < piece[py].length; px++) {
+          if (piece[py][px]) {
+            const bx = x + px;
+            const by = y + py;
+            if (by >= 0 && by < BOARD_ROWS && 
+                bx >= 0 && bx < BOARD_COLS) {
+              simBoard[by][bx] = 1;
+            }
+          }
+        }
+      }
+      
+      // Evaluate resulting board
+      const score = this._evaluateBoard(simBoard);
+      
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = x;
+        bestRotations = rot;
+      }
+    }
+    
+    // Rotate for next iteration
+    piece = this._rotatePiece(piece);
+  }
+  
+  return { targetX: bestX, rotationsLeft: bestRotations };
+}
+```
+
+## Board evaluation function
+
+The AI scores board states using weighted heuristics:
+
+```typescript
+private _evaluateBoard(board: number[][]): number {
+  const w = this._weights;
+  
+  // 1. Count lines that will be cleared
+  let linesCleared = 0;
+  for (const row of board) {
+    if (row.every(c => c !== 0)) linesCleared++;
+  }
+  
+  // 2. Calculate aggregate height
+  const heights = Array(BOARD_COLS).fill(0);
+  for (let x = 0; x < BOARD_COLS; x++) {
+    for (let y = 0; y < BOARD_ROWS; y++) {
+      if (board[y][x]) {
+        heights[x] = BOARD_ROWS - y;
+        break;
+      }
+    }
+  }
+  const aggregateHeight = heights.reduce((a, b) => a + b, 0);
+  
+  // 3. Count holes (empty cells below filled cells)
+  let holes = 0;
+  for (let x = 0; x < BOARD_COLS; x++) {
+    let filled = false;
+    for (let y = 0; y < BOARD_ROWS; y++) {
+      if (board[y][x]) filled = true;
+      else if (filled) holes++;
+    }
+  }
+  
+  // 4. Calculate bumpiness (surface variation)
+  let bumpiness = 0;
+  for (let x = 0; x < BOARD_COLS - 1; x++) {
+    bumpiness += Math.abs(heights[x] - heights[x + 1]);
+  }
+  
+  // 5. Weighted sum
+  return (
+    w.linesWeight     * linesCleared +
+    w.heightWeight    * aggregateHeight +
+    w.holesWeight     * holes +
+    w.bumpinessWeight * bumpiness
+  );
+}
+```
+
+## Animation system (AI)
+
+The AI component uses a custom animation system for smooth piece movements:
+
+```typescript
+private _startAnimation(
+  fromY: number, 
+  toY: number, 
+  rotationSteps: number, 
+  onComplete: () => void
+): void {
+  this.isAnimating = true;
+  this.animationStartTime = performance.now();
+  
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - this.animationStartTime;
+    const duration = 150;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // Ease out function
+    const eased = progress * (2 - progress);
+    
+    // Interpolate Y position
+    this.visualY = fromY + (toY - fromY) * eased;
+    
+    // Interpolate rotation
+    if (rotationSteps > 0) {
+      const rotationEased = Math.min(progress * 1.5, 1) * (2 - progress);
+      const startRot = this.targetRotation - (rotationSteps * 90);
+      this.visualRotation = startRot + (rotationSteps * 90 * rotationEased);
+    }
+    
+    this._syncState();
+    
+    if (progress < 1) {
+      this.animationFrameId = requestAnimationFrame(animate);
+    } else {
+      this.isAnimating = false;
+      this.visualY = toY;
+      this.visualRotation = this.targetRotation;
+      onComplete?.();
+    }
+  };
+  
+  this.animationFrameId = requestAnimationFrame(animate);
+}
+```
+
+## Scoring system
+
+```typescript
+private clearLines() {
+  let linesCleared = 0;
+  
+  this.board.update(currentBoard => {
+    const newBoard = [...currentBoard];
+    
+    // Remove completed lines
+    for (let y = BOARD_HEIGHT - 1; y >= 0; y--) {
+      if (newBoard[y].every(cell => cell !== '')) {
+        newBoard.splice(y, 1);
+        newBoard.unshift(Array(BOARD_WIDTH).fill(''));
+        linesCleared++;
+        y++;  // Check same row again
+      }
+    }
+    
+    return newBoard;
+  });
+  
+  // Standard Tetris scoring
+  if (linesCleared > 0) {
+    const points = [
+      0,    // 0 lines
+      100,  // 1 line
+      300,  // 2 lines
+      500,  // 3 lines
+      800   // 4 lines (Tetris!)
+    ][linesCleared];
+    
+    this.lockedScore.update(score => score + points * this.level);
+  }
+}
+```
+
+## Level progression
+
+```typescript
+// Lines cleared -> Level
+private updateLevel() {
+  this.level_ = Math.floor(this.lines_ / 10) + 1;
+  
+  // Adjust drop speed
+  const dropMs = Math.max(80, 800 - (this.level_ - 1) * 70);
+  
+  // Update game loop interval
+  if (this.dropIntervalId) {
+    clearInterval(this.dropIntervalId);
+    this.dropIntervalId = setInterval(() => {
+      this._tryMoveDown();
+    }, dropMs);
+  }
+}
+
+// Speed progression:
+// Level 1: 800ms per drop
+// Level 2: 730ms
+// Level 5: 520ms
+// Level 10: 170ms
+// Level 11+: 80ms (max speed)
+```
+
+## Performance optimization
+
+<Note>
+**Signal benefits:** Using Angular Signals eliminates unnecessary change detection cycles. The component only updates when game state actually changes, resulting in smooth 60 FPS gameplay even with complex AI calculations.
+</Note>
+
+```typescript
+// Efficient board rendering with computed signals
+readonly displayBoard = computed(() => {
+  // Only recalculates when board or currentPiece changes
+  const boardCopy = this.board().map(row => [...row]);
+  
+  this.currentPiece().forEach(pos => {
+    if (pos.y >= 0 && pos.y < this.BOARD_HEIGHT) {
+      boardCopy[pos.y][pos.x] = this.currentColor();
+    }
+  });
+  
+  return boardCopy;
+});
+```
+
+## Best practices
+
+<Tabs>
+  <Tab title="Game Loop">
+    - Use `interval()` from RxJS for consistent timing
+    - Clear subscriptions on destroy
+    - Adjust tick rate based on level
+    
+    ```typescript
+    this.gameLoop$ = interval(this.TICK_INTERVAL).subscribe(() => {
+      if (!this.gameOver()) {
+        this.moveDown();
+      }
+    });
+    
+    ngOnDestroy() {
+      this.gameLoop$?.unsubscribe();
+    }
+    ```
+  </Tab>
+  
+  <Tab title="AI Tuning">
+    - Start with balanced weights
+    - Adjust one parameter at a time
+    - Test over 100+ games for consistency
+    - Log results for analysis
+    
+    ```typescript
+    console.log({
+      mode: this.currentMode(),
+      score: this.score(),
+      lines: this.lines(),
+      weights: this._aiWeights()
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Mobile">
+    - Detect mobile with user agent
+    - Show touch controls on mobile
+    - Increase button sizes for touch
+    - Consider landscape orientation
+    
+    ```typescript
+    this.lockedIsMobile.set(
+      /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Styling examples
+
+```css
+/* Board */
+.board {
+  display: grid;
+  grid-template-rows: repeat(20, 1fr);
+  gap: 1px;
+  background: #000;
+  padding: 2px;
+  border: 3px solid #333;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 1px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  background: #1a1a1a;
+  border: 1px solid #333;
+}
+
+.cell.filled {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+/* Current piece animation */
+.current-piece {
+  position: absolute;
+  transition: top 0.05s linear;
+  pointer-events: none;
+}
+
+.current-piece.animating {
+  transition: top 0.15s ease-out, 
+              transform 0.15s ease-out;
+}
+
+/* Mobile controls */
+.mobile-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mobile-controls button {
+  padding: 1rem;
+  font-size: 1.5rem;
+  border: 2px solid #333;
+  background: #2a2a2a;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.mobile-controls button:active {
+  background: #3a3a3a;
+  transform: scale(0.95);
+}
+```
+
+## Related components
+
+- [Sudoku](/components/sudoku) - Number puzzle with AI solving
+- [Tic Tac Toe](/components/tictactoe) - Minimax AI game
+- [Hanoi](/components/hanoi) - Recursive puzzle solver

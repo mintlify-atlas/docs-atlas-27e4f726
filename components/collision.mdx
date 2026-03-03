@@ -1,0 +1,564 @@
+---
+title: Collision physics component
+description: Interactive ball physics simulation demonstrating collision detection, gravity, friction, and energy calculations
+---
+
+## Overview
+
+The `AlgorithmCollisionComponent` is an interactive physics simulation that demonstrates collision detection, gravity, friction, and energy conservation. Users can adjust the ball's starting position and watch it bounce around a canvas while real-time physics calculations are displayed.
+
+## Component properties
+
+### Configuration constants
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ASPECT_RATIO` | `number` | `0.6` | Canvas height to width ratio |
+| `MAX_WIDTH` | `number` | `500` | Maximum canvas width in pixels |
+| `MIN_WIDTH` | `number` | `280` | Minimum canvas width in pixels |
+
+### Canvas dimensions
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `canvasWidth` | `number` | `500` | Current canvas width |
+| `canvasHeight` | `number` | `300` | Current canvas height |
+
+### Physics parameters
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `gravity` | `number` | `0.5` | Gravitational acceleration (pixels/frame²) |
+| `friction` | `number` | `0.98` | Friction coefficient (0-1) |
+| `restitution` | `number` | `0.8` | Bounce coefficient (0-1, energy retained) |
+
+### Ball properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ball.radius` | `number` | `15` | Ball radius in pixels (12 on small screens) |
+| `ball.mass` | `number` | `1` | Ball mass (arbitrary units) |
+
+### Position and velocity
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `xPosition` | `number` | Initial X position (controlled by slider) |
+| `yPosition` | `number` | Initial Y position (controlled by slider) |
+| `currentX` | `number` | Current X position during simulation |
+| `currentY` | `number` | Current Y position during simulation |
+| `vx` | `number` | Velocity in X direction |
+| `vy` | `number` | Velocity in Y direction |
+
+### Simulation state
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isPlaying` | `boolean` | True if simulation is running |
+| `isPaused` | `boolean` | True if simulation is paused |
+| `collisionCount` | `number` | Number of wall collisions |
+| `isPanelCollapsed` | `boolean` | Physics panel visibility state |
+
+### Calculated physics values
+
+| Property | Type | Formula | Description |
+|----------|------|---------|-------------|
+| `speed` | `number` | `√(vx² + vy²)` | Magnitude of velocity |
+| `kineticEnergy` | `number` | `½mv²` | Kinetic energy |
+| `potentialEnergy` | `number` | `mgh` | Potential energy |
+| `totalEnergy` | `number` | `KE + PE` | Total mechanical energy |
+| `momentum` | `number` | `mv` | Linear momentum |
+
+### ViewChild references
+
+| Reference | Type | Description |
+|-----------|------|-------------|
+| `canvas` | `ElementRef<HTMLCanvasElement>` | Canvas element for rendering |
+| `ctx` | `CanvasRenderingContext2D` | Canvas 2D rendering context |
+
+## Key methods
+
+### Simulation control
+
+#### `startSimulation()`
+
+Starts the physics simulation from the initial position.
+
+```typescript
+startSimulation(): void
+```
+
+**Behavior:**
+- Sets `isPlaying` to `true`
+- Resets ball to initial position
+- Sets initial velocity (vx = 5, vy = 0)
+- Resets collision counter
+- Starts animation loop
+
+**Example usage:**
+```html
+<button (click)="startSimulation()" class="btn btn-success">
+  <span>Start</span>
+</button>
+```
+
+Source: `algorithm-collision.component.ts:170`
+
+#### `pauseSimulation()`
+
+Pauses the running simulation.
+
+```typescript
+pauseSimulation(): void
+```
+
+**Behavior:**
+- Sets `isPaused` to `true`
+- Cancels animation frame
+- Preserves current position and velocity
+
+Source: `algorithm-collision.component.ts:181`
+
+#### `resumeSimulation()`
+
+Resumes a paused simulation.
+
+```typescript
+resumeSimulation(): void
+```
+
+**Behavior:**
+- Sets `isPaused` to `false`
+- Restarts animation loop from current state
+
+Source: `algorithm-collision.component.ts:189`
+
+#### `resetSimulation()`
+
+Stops the simulation and returns to initial state.
+
+```typescript
+resetSimulation(): void
+```
+
+**Behavior:**
+- Cancels animation
+- Resets all state flags
+- Returns ball to initial position
+- Resets velocity to initial values
+- Clears collision counter
+- Redraws static frame
+
+Source: `algorithm-collision.component.ts:194`
+
+### Animation and physics
+
+#### `animate()`
+
+Main animation loop that updates physics and renders the scene.
+
+```typescript
+animate(): void
+```
+
+**Physics steps:**
+
+1. **Apply gravity:** `vy += gravity`
+2. **Update position:** `currentX += vx`, `currentY += vy`
+3. **Check collisions:**
+   - **Right wall:** `currentX + radius > canvasWidth`
+   - **Left wall:** `currentX - radius < 0`
+   - **Bottom wall:** `currentY + radius > canvasHeight`
+   - **Top wall:** `currentY - radius < 0`
+4. **Handle collisions:**
+   - Reverse velocity: `v = -v * restitution`
+   - Apply friction (horizontal collisions): `vx *= friction`
+   - Constrain position to bounds
+   - Increment collision counter
+5. **Stop condition:** When `|vx| < 0.1` and `|vy| < 0.1`
+
+**Example collision detection:**
+```typescript
+if (this.currentX + this.ball.radius > this.canvasWidth) {
+  this.currentX = this.canvasWidth - this.ball.radius;
+  this.vx = -this.vx * this.restitution;
+  if (Math.abs(this.vx) < 0.1) this.vx = 0;
+  horizontalCollision = true;
+}
+```
+
+Source: `algorithm-collision.component.ts:210`
+
+### Drawing methods
+
+#### `drawGrid()`
+
+Draws a coordinate grid with 50-pixel spacing.
+
+```typescript
+drawGrid(): void
+```
+
+**Features:**
+- Vertical and horizontal gridlines every 50px
+- Coordinate labels every 100px
+- Light gray color (#e0e0e0)
+
+Source: `algorithm-collision.component.ts:274`
+
+#### `drawBall()`
+
+Draws the ball with a radial gradient effect.
+
+```typescript
+drawBall(): void
+```
+
+**Rendering:**
+- Creates radial gradient from light to dark red
+- Clamps position to canvas bounds
+- Applies purple stroke (#92278f)
+- Uses sub-pixel rendering for smooth animation
+
+Source: `algorithm-collision.component.ts:330`
+
+#### `drawInitialPositionPreview()`
+
+Draws a semi-transparent preview of the starting position.
+
+```typescript
+drawInitialPositionPreview(): void
+```
+
+**Features:**
+- 30% opacity red ball
+- "Start" label above the ball
+- Only visible when simulation is not running
+
+Source: `algorithm-collision.component.ts:302`
+
+### Physics calculations
+
+#### `updateCalculations()`
+
+Calculates all physics values using the MathJS library.
+
+```typescript
+updateCalculations(): void
+```
+
+**Calculations performed:**
+
+**Speed (magnitude of velocity):**
+```typescript
+const speedScope = { vx: this.vx, vy: this.vy };
+this.speed = evaluate('sqrt(vx^2 + vy^2)', speedScope);
+this.speedFormula = `√(${this.vx.toFixed(1)}² + ${this.vy.toFixed(1)}²) = ${this.speed.toFixed(2)}`;
+```
+
+**Velocity (vector):**
+```typescript
+this.velocityFormula = `(${this.vx.toFixed(1)}, ${this.vy.toFixed(1)})`;
+```
+
+**Kinetic energy:**
+```typescript
+const keScope = { m: this.ball.mass, v: this.speed };
+this.kineticEnergy = evaluate('0.5 * m * v^2', keScope);
+this.keFormula = `½×${this.ball.mass}×${this.speed.toFixed(1)}² = ${this.kineticEnergy.toFixed(1)}`;
+```
+
+**Potential energy:**
+```typescript
+const height = this.canvasHeight - this.currentY;
+const peScope = { m: this.ball.mass, g: this.gravity, h: height };
+this.potentialEnergy = evaluate('m * g * h', peScope);
+this.peFormula = `${this.ball.mass}×${this.gravity}×${height.toFixed(1)} = ${this.potentialEnergy.toFixed(1)}`;
+```
+
+**Total energy:**
+```typescript
+const totalScope = { ke: this.kineticEnergy, pe: this.potentialEnergy };
+this.totalEnergy = evaluate('ke + pe', totalScope);
+this.totalFormula = `${this.kineticEnergy.toFixed(1)} + ${this.potentialEnergy.toFixed(1)} = ${this.totalEnergy.toFixed(1)}`;
+```
+
+**Momentum:**
+```typescript
+const pScope = { m: this.ball.mass, v: this.speed };
+this.momentum = evaluate('m * v', pScope);
+this.momentumFormula = `${this.ball.mass}×${this.speed.toFixed(1)} = ${this.momentum.toFixed(1)}`;
+```
+
+Source: `algorithm-collision.component.ts:364`
+
+### Responsive design
+
+#### `updateCanvasSize()`
+
+Adjusts canvas dimensions based on viewport size.
+
+```typescript
+private updateCanvasSize(): void
+```
+
+**Behavior:**
+- Calculates width based on available space
+- Maintains aspect ratio (0.6)
+- Adjusts ball radius (12px for small screens, 15px for large)
+- Constrains positions to new bounds
+
+Source: `algorithm-collision.component.ts:125`
+
+#### `onResize(event)`
+
+Handles window resize events.
+
+```typescript
+@HostListener('window:resize', ['$event'])
+onResize(event: Event): void
+```
+
+**Behavior:**
+- Pauses simulation if running
+- Updates canvas size
+- Constrains ball position
+- Redraws frame
+- Resumes if was playing
+
+Source: `algorithm-collision.component.ts:110`
+
+### Position control
+
+#### `updatePosition()`
+
+Updates the ball position when sliders change.
+
+```typescript
+updatePosition(): void
+```
+
+**Behavior:**
+- Updates current position to match sliders
+- Redraws the preview
+- Recalculates physics values
+
+Source: `algorithm-collision.component.ts:395`
+
+## Physics concepts demonstrated
+
+### Collision detection
+
+The component demonstrates axis-aligned bounding box (AABB) collision detection:
+
+```typescript
+// Right wall collision
+if (currentX + radius > canvasWidth) {
+  // Collision detected
+}
+```
+
+### Elastic collisions
+
+The `restitution` coefficient (0.8) means 80% of energy is retained after bounce:
+
+```typescript
+vx = -vx * restitution; // Reverse and reduce velocity
+```
+
+### Friction
+
+Friction (0.98) is applied on floor collisions:
+
+```typescript
+if (this.currentY + this.ball.radius > this.canvasHeight) {
+  this.vy = -this.vy * this.restitution;
+  this.vx *= this.friction; // Horizontal slowdown
+}
+```
+
+### Energy conservation
+
+The simulation approximates conservation of energy:
+
+**Total Energy = Kinetic Energy + Potential Energy**
+
+- As the ball falls, PE converts to KE
+- As the ball rises, KE converts to PE
+- Some energy is lost to friction and inelastic collisions
+
+<Note>
+Due to friction and restitution less than 1.0, total energy decreases over time. This is realistic behavior, as real-world collisions dissipate energy as heat and sound.
+</Note>
+
+## Usage example
+
+### Template
+
+```html
+<div class="container">
+  <app-base-reference></app-base-reference>
+  <hr>
+  
+  <!-- Position sliders -->
+  <div class="position-controls">
+    <div class="control-group">
+      <label for="xPosition">
+        <span>X Position:</span>
+        <span>{{ xPosition }}</span>
+      </label>
+      <input type="range" 
+             id="xPosition" 
+             [(ngModel)]="xPosition"
+             [min]="ball.radius" 
+             [max]="canvasWidth - ball.radius"
+             (input)="updatePosition()">
+    </div>
+    
+    <div class="control-group">
+      <label for="yPosition">
+        <span>Y Position:</span>
+        <span>{{ yPosition }}</span>
+      </label>
+      <input type="range" 
+             id="yPosition" 
+             [(ngModel)]="yPosition"
+             [min]="ball.radius" 
+             [max]="canvasHeight - ball.radius"
+             (input)="updatePosition()">
+    </div>
+  </div>
+  
+  <!-- Canvas -->
+  <div class="canvas-container">
+    <canvas #ballCanvas 
+            [width]="canvasWidth" 
+            [height]="canvasHeight"></canvas>
+  </div>
+  
+  <!-- Control buttons -->
+  <div class="controls-container">
+    @if (!isPlaying) {
+      <button (click)="startSimulation()" class="btn btn-success">
+        Start ▶
+      </button>
+    }
+    @if (isPlaying && !isPaused) {
+      <button (click)="pauseSimulation()" class="btn btn-warning">
+        Pause ⏸
+      </button>
+    }
+    @if (isPlaying && isPaused) {
+      <button (click)="resumeSimulation()" class="btn btn-info">
+        Resume ▶
+      </button>
+    }
+    <button (click)="resetSimulation()" class="btn btn-danger">
+      Reset ↺
+    </button>
+  </div>
+  
+  <!-- Physics data panel -->
+  <div class="calculation-panel">
+    <div class="panel-header" (click)="togglePanel()">
+      <h4>Physics Data</h4>
+      <span>{{ isPanelCollapsed ? '▼' : '▲' }}</span>
+    </div>
+    
+    <div class="panel-content" [class.hidden]="isPanelCollapsed">
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Position</span>
+          <span>(x, y)</span>
+        </div>
+        <div class="calc-solution">
+          ({{ currentX.toFixed(0) }}, {{ currentY.toFixed(0) }}) px
+        </div>
+      </div>
+      
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Speed</span>
+          <span>√(vx²+vy²)</span>
+        </div>
+        <div class="calc-solution">{{ speedFormula }} px/s</div>
+      </div>
+      
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Kinetic Energy</span>
+          <span>½mv²</span>
+        </div>
+        <div class="calc-solution">{{ keFormula }} J</div>
+      </div>
+      
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Potential Energy</span>
+          <span>mgh</span>
+        </div>
+        <div class="calc-solution">{{ peFormula }} J</div>
+      </div>
+      
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Momentum</span>
+          <span>p = mv</span>
+        </div>
+        <div class="calc-solution">{{ momentumFormula }} kg·px/s</div>
+      </div>
+      
+      <div class="calc-item">
+        <div class="calc-header">
+          <span>Collisions</span>
+        </div>
+        <div class="calc-solution">{{ collisionCount }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Component declaration
+
+```typescript
+import { Component, ViewChild, ElementRef, AfterViewInit, OnDestroy, OnInit } from '@angular/core';
+import { evaluate } from 'mathjs';
+
+@Component({
+  selector: 'app-algorithm-collision',
+  templateUrl: './algorithm-collision.component.html',
+  styleUrls: ['./algorithm-collision.component.css'],
+  standalone: false
+})
+export class AlgorithmCollisionComponent extends BaseReferenceComponent 
+  implements AfterViewInit, OnInit, OnDestroy {
+  // Implementation
+}
+```
+
+## Dependencies
+
+- `mathjs` - Mathematical expression evaluation for physics calculations
+- `BaseReferenceComponent` - Base component with common functionality
+- Canvas API - For rendering and animation
+
+## Workflow
+
+1. **Initialize**: Component loads with ball at default position (100, 100)
+2. **Adjust Position**: User moves sliders to set starting position
+3. **Start**: User clicks "Start" to begin simulation
+4. **Observe**: Ball moves with gravity, bounces off walls, physics values update in real-time
+5. **Pause/Resume**: User can pause and resume to examine specific moments
+6. **Reset**: Returns to initial state for another run
+
+<Info>
+The physics panel can be collapsed to focus on the simulation. Click the header to toggle visibility.
+</Info>
+
+## Performance considerations
+
+- Uses `requestAnimationFrame` for smooth 60 FPS animation
+- Canvas is cleared and redrawn each frame
+- Physics calculations are optimized with early exit conditions
+- Responsive canvas sizing adapts to viewport changes

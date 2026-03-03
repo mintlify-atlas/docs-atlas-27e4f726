@@ -1,0 +1,333 @@
+---
+title: Sudoku
+description: Interactive Sudoku game with backend generation and solving capabilities
+---
+
+## Overview
+
+The `SudokuComponent` provides a complete Sudoku puzzle experience with backend-powered generation and solving using C++ or Node.js engines. Players can generate puzzles from files or backend services and solve them automatically.
+
+## Component details
+
+**Selector:** `app-sudoku`
+
+**Location:** `src/app/_modules/_Demos/_DemosFeatures/games/game-sudoku/game-sudoku.component.ts`
+
+## Key features
+
+- **Multi-backend support** - Generate and solve puzzles using .NET Core/C++ or Node.js backends
+- **File upload** - Load Sudoku puzzles from JSON files
+- **Auto-solve** - Automatically solve generated puzzles using backend algorithms
+- **PDF export** - Export puzzle state (started or solved) to PDF
+- **Real-time status** - Visual feedback during generation and solving operations
+
+## Component properties
+
+### Board state
+
+```typescript
+board: number[][]  // 9x9 Sudoku grid
+sudokuSolved: boolean  // Tracks if puzzle is solved
+```
+
+### UI controls
+
+```typescript
+btnGenerateCaption: string  // Generate button text
+btnSolveCaption: string     // Solve button text
+status_message: signal<string>  // Status display
+```
+
+### Backend selection
+
+```typescript
+__languajeList: _languageName[]  // Available backends
+// Options:
+// - .NET Core/C++ (default)
+// - Node.js
+```
+
+### Generation sources
+
+```typescript
+__generateSourceList: ListItem[]  // Puzzle sources
+// Options:
+// - File upload
+// - Backend generation
+```
+
+## Usage examples
+
+### Basic implementation
+
+```html
+<app-sudoku></app-sudoku>
+```
+
+### With query parameters
+
+```typescript
+// Route with backend selection
+this.router.navigate(['/games/sudoku'], {
+  queryParams: { langName: 'CPP' }  // or 'JS'
+});
+```
+
+### Template structure
+
+```html
+<!-- Backend selection -->
+<select #_languajeList>
+  <option value="CPP">.NET Core/C++</option>
+  <option value="JS">Node.js</option>
+</select>
+
+<!-- Generation source -->
+<select #_SourceList (change)="_fileUploadDivHiddenChanged()">
+  <option>[File]</option>
+  <option>[Backend]</option>
+</select>
+
+<!-- File upload (conditional) -->
+<input type="file" 
+       #_fileUpload 
+       (change)="selectFile($event)"
+       [hidden]="_fileUploadDivHidden" />
+
+<!-- Actions -->
+<button (click)="_GetSudoku()">{{ btnGenerateCaption }}</button>
+<button (click)="_SolveSudoku()" 
+        [disabled]="sudokuSolved">{{ btnSolveCaption }}</button>
+<button (click)="_GetPdf()">Export PDF</button>
+
+<!-- Board display -->
+<div #_sudoku_board>
+  <div *ngFor="let row of board; let i = index">
+    <span *ngFor="let cell of row; let j = index">
+      {{ cell === 0 ? '' : cell }}
+    </span>
+  </div>
+</div>
+
+<!-- Status -->
+<div>{{ status_message() }}</div>
+```
+
+## Service methods
+
+### Generate puzzle
+
+```typescript
+GenerateFromBackend(): void {
+  const generatedSudoku: Observable<string>;
+  const selectedIndex = this._languajeList.nativeElement.options.selectedIndex;
+  
+  switch (selectedIndex) {
+    case 1: // C++
+      generatedSudoku = this._sudokuService._GetSudoku_CPP();
+      break;
+    case 2: // Node.js
+      generatedSudoku = this._sudokuService._GetSudoku_NodeJS();
+      break;
+  }
+  
+  generatedSudoku.subscribe({
+    next: (jsondata: string) => {
+      // Parse and populate board
+      this.board = parseJsonToBoard(jsondata);
+      this.status_message.set("[Generated correctly]");
+    }
+  });
+}
+```
+
+### Solve puzzle
+
+```typescript
+_SolveSudoku(): void {
+  let solveSudoku: Observable<string>;
+  const selectedIndex = this._languajeList.nativeElement.options.selectedIndex;
+  
+  switch (selectedIndex) {
+    case 1: // C++
+      solveSudoku = this._sudokuService._SolveSudoku_CPP(this._sudokuGenerated);
+      break;
+    case 2: // Node.js
+      solveSudoku = this._sudokuService._SolveSudoku_NodeJS(this._sudokuGenerated);
+      break;
+  }
+  
+  solveSudoku.subscribe({
+    next: (jsondata: string) => {
+      this.board = parseJsonToBoard(jsondata);
+      this.sudokuSolved = true;
+      this.status_message.set("[Solved correctly]");
+    }
+  });
+}
+```
+
+### Upload from file
+
+```typescript
+upload(): void {
+  if (this.selectedFiles) {
+    const file = this.selectedFiles.item(0);
+    
+    this._sudokuService.uploadSudoku(file).subscribe({
+      next: (event: any) => {
+        if (event instanceof HttpResponse) {
+          const jsondata = event.body;
+          this.board = parseJsonToBoard(jsondata);
+          this.status_message.set("[Generated correctly]");
+        }
+      }
+    });
+  }
+}
+```
+
+### Export to PDF
+
+```typescript
+_GetPdf(): void {
+  const suffix = this.sudokuSolved ? 'SOLVED' : 'STARTED';
+  const fileName = `SUDOKU_BOARD_${suffix}`;
+  
+  this.pdfEngine._GetPDF(
+    this.pageTitle,
+    this._sudoku_board,
+    this._sudoku_board,
+    fileName
+  ).subscribe({
+    complete: () => {
+      this.status_message.set('PDF file generated correctly');
+    }
+  });
+}
+```
+
+## Data format
+
+The component expects JSON data in this format:
+
+```json
+[
+  [{"row":0,"col":0,"val":5}, {"row":0,"col":1,"val":3}, ...],
+  [{"row":1,"col":0,"val":6}, {"row":1,"col":1,"val":0}, ...],
+  ...
+]
+```
+
+Where `0` represents empty cells and `1-9` represent filled cells.
+
+## Services used
+
+### SudokuService
+
+**Location:** `src/app/_services/__Games/SudokuService/sudoku.service.ts`
+
+**Methods:**
+- `_GetSudoku_CPP(): Observable<string>` - Generate puzzle using C++ backend
+- `_GetSudoku_NodeJS(): Observable<string>` - Generate puzzle using Node.js backend
+- `_SolveSudoku_CPP(puzzle: string): Observable<string>` - Solve using C++ backend
+- `_SolveSudoku_NodeJS(puzzle: string): Observable<string>` - Solve using Node.js backend
+- `uploadSudoku(file: File): Observable<HttpEvent<any>>` - Upload puzzle file
+
+### PdfService
+
+**Location:** `src/app/_services/__FileGeneration/pdf.service`
+
+**Methods:**
+- `_GetPDF(title, element, elementName, fileName): Observable<string>` - Generate PDF from element
+
+<Note>
+The component uses `BaseReferenceComponent` which provides common functionality like speech services and configuration management.
+</Note>
+
+## Backend integration
+
+### C++ backend endpoint
+
+```typescript
+// GET request to generate puzzle
+GET /api/sudoku/generate
+
+// POST request to solve puzzle
+POST /api/sudoku/solve
+Body: { puzzle: "[[1,2,3...]]" }
+```
+
+### Node.js backend endpoint
+
+```typescript
+// GET request to generate puzzle
+GET /api/node/sudoku/generate
+
+// POST request to solve puzzle  
+POST /api/node/sudoku/solve
+Body: { puzzle: "[[1,2,3...]]" }
+```
+
+## Status messages
+
+| Status | Description |
+|--------|-------------|
+| `[...generating...]` | Puzzle generation in progress |
+| `[Generated correctly]` | Puzzle generated successfully |
+| `[...solving...]` | Solving puzzle |
+| `[Solved correctly]` | Puzzle solved successfully |
+| `[... Generating PDF file ...]` | PDF export in progress |
+| `PDF file generated correctly` | PDF exported successfully |
+| `An error occurred` | Operation failed |
+
+## Best practices
+
+<Tabs>
+  <Tab title="Performance">
+    - Cache the selected backend to avoid repeated lookups
+    - Use loading indicators during async operations
+    - Clean up subscriptions in `ngOnDestroy`
+    
+    ```typescript
+    private subscriptions = new Subscription();
+    
+    ngOnDestroy() {
+      this.subscriptions.unsubscribe();
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Error Handling">
+    - Implement proper error handling for network failures
+    - Show user-friendly error messages
+    - Reset UI state on errors
+    
+    ```typescript
+    error: (err: Error) => {
+      console.error('[SUDOKU ERROR]:', err);
+      this.status_message.set('An error occurred');
+      this.btnGenerateCaption = '[GENERATE]';
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Validation">
+    - Validate board state before solving
+    - Check file format on upload
+    - Ensure backend is selected before operations
+    
+    ```typescript
+    if (!this._sudokuGenerated) {
+      this.status_message.set('Please generate a puzzle first');
+      return;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Related components
+
+- [Tic Tac Toe](/components/tictactoe) - Classic two-player game
+- [Tetris](/components/tetris) - Block-stacking puzzle game
+- [Hanoi](/components/hanoi) - Tower of Hanoi puzzle

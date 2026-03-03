@@ -1,0 +1,499 @@
+---
+title: File generation service
+description: Angular service for generating PDF files from HTML content using html2canvas and jsPDF
+---
+
+The `PdfService` provides methods for generating PDF files both client-side (from HTML elements) and server-side (from backend APIs). It uses html2canvas to capture HTML content and jsPDF to create downloadable PDF documents.
+
+## Service location
+
+```typescript
+import { PdfService } from 'src/app/_services/__FileGeneration/pdf.service';
+```
+
+## Dependencies
+
+The service relies on these third-party libraries:
+
+- **html2canvas**: Converts HTML elements to canvas
+- **jsPDF**: Generates PDF documents from canvas data
+
+```typescript
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+```
+
+## Inheritance
+
+The service extends `BaseService` and uses Angular's modern dependency injection pattern:
+
+```typescript
+@Injectable({
+  providedIn: 'root'
+})
+export class PdfService extends BaseService {
+  private readonly http = inject(HttpClient);
+  private readonly _configService = inject(ConfigService);
+
+  constructor() {
+    super();
+  }
+}
+```
+
+## Client-side PDF generation
+
+### _GetPDF()
+
+Generates a PDF from HTML content in the browser using html2canvas and jsPDF.
+
+<ParamField path="pageTitle" type="string" required>
+  The title for the PDF document (currently preserved but not used)
+</ParamField>
+
+<ParamField path="c_canvas" type="any" required>
+  ElementRef or ViewChild reference to the HTML element to convert
+</ParamField>
+
+<ParamField path="divCanvas_Pdf" type="any" required>
+  ElementRef or ViewChild reference to the container element for sizing
+</ParamField>
+
+<ParamField path="fileName" type="string" required>
+  Base name for the generated PDF file (timestamp will be appended)
+</ParamField>
+
+<ParamField path="Returns" type="Observable<string>">
+  An Observable that emits the final filename when PDF generation completes
+</ParamField>
+
+```typescript
+import { Component, ViewChild, ElementRef } from '@angular/core';
+import { PdfService } from 'src/app/_services/__FileGeneration/pdf.service';
+
+export class MyComponent {
+  @ViewChild('contentToExport') contentToExport: ElementRef;
+  @ViewChild('pdfContainer') pdfContainer: ElementRef;
+
+  constructor(public pdfService: PdfService) {}
+
+  exportToPDF(): void {
+    const pageTitle = 'My Report';
+    const fileName = 'report';
+
+    this.pdfService._GetPDF(
+      pageTitle,
+      this.contentToExport,
+      this.pdfContainer,
+      fileName
+    ).subscribe({
+      next: (generatedFileName) => {
+        console.log('PDF saved as:', generatedFileName);
+        // generatedFileName will be like: report_2026-03-03T10-30-45-123Z.pdf
+      },
+      error: (error) => {
+        console.error('PDF generation failed:', error);
+      },
+      complete: () => {
+        console.log('PDF generation complete');
+      }
+    });
+  }
+}
+```
+
+#### HTML template setup
+
+```html
+<div #pdfContainer>
+  <div #contentToExport>
+    <h1>Report Title</h1>
+    <p>This content will be converted to PDF</p>
+    <!-- Your content here -->
+  </div>
+</div>
+
+<button (click)="exportToPDF()">Export to PDF</button>
+```
+
+<Tip>
+**Automatic timestamping**: The generated PDF filename automatically includes a timestamp in ISO format with special characters replaced by hyphens.
+
+Example: `SUDOKU_BOARD_SOLVED_2026-03-03T14-25-30-456Z.pdf`
+</Tip>
+
+### getPdf()
+
+Lower-level method that handles the actual PDF generation logic. This is called internally by `_GetPDF()` but can be used directly if needed.
+
+<ParamField path="pageTitle" type="string" required>
+  The title for the PDF document
+</ParamField>
+
+<ParamField path="c_canvas" type="any" required>
+  ElementRef to the content element
+</ParamField>
+
+<ParamField path="divCanvas_Pdf" type="any" required>
+  ElementRef to the container element
+</ParamField>
+
+<ParamField path="fileName" type="string" required>
+  Base filename for the PDF
+</ParamField>
+
+<ParamField path="observer" type="any" required>
+  RxJS observer object with next, error, and complete callbacks
+</ParamField>
+
+<ParamField path="Returns" type="void">
+  No return value (uses observer callbacks)
+</ParamField>
+
+```typescript
+const observer = {
+  next: (filename: string) => console.log('Generated:', filename),
+  error: (err: any) => console.error('Error:', err),
+  complete: () => console.log('Complete')
+};
+
+this.pdfService.getPdf(
+  'My Title',
+  this.contentRef,
+  this.containerRef,
+  'myfile',
+  observer
+);
+```
+
+<Warning>
+The `getPdf()` method uses an async self-invoking function internally to handle promises while maintaining a synchronous signature. This is preserved for backward compatibility.
+</Warning>
+
+## Server-side PDF generation
+
+### GetPDF()
+
+Requests PDF generation from the backend server.
+
+<ParamField path="subjectName" type="string | undefined" required>
+  The subject or identifier for the PDF to generate on the backend
+</ParamField>
+
+<ParamField path="Returns" type="Observable<HttpEvent<any>>">
+  An Observable that emits HTTP events including progress updates
+</ParamField>
+
+```typescript
+import { HttpEventType, HttpResponse } from '@angular/common/http';
+
+export class PdfGenerationComponent {
+  progress = 0;
+  downloadLink = '';
+  pdfFileName = '';
+
+  constructor(public pdfService: PdfService) {}
+
+  generatePdfFromBackend(subjectName: string): void {
+    this.progress = 0;
+
+    this.pdfService.GetPDF(subjectName).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.Sent) {
+          this.progress = 25;
+          console.log('Request sent');
+        } else if (event.type === HttpEventType.DownloadProgress) {
+          this.progress = 50;
+          console.log('Downloading...');
+        } else if (event instanceof HttpResponse) {
+          this.progress = 100;
+          this.processPdfResponse(event.body);
+        }
+      },
+      error: (err) => {
+        console.error('PDF generation failed:', err);
+        this.progress = 0;
+      },
+      complete: () => {
+        console.log('PDF generation complete');
+      }
+    });
+  }
+
+  private processPdfResponse(body: string): void {
+    const parts = body.split('|');
+    if (parts.length > 0) {
+      this.pdfFileName = parts[1];
+      const fileUrl = parts[0];
+      this.downloadLink = fileUrl.replaceAll('"', '');
+      console.log('PDF available at:', this.downloadLink);
+    }
+  }
+}
+```
+
+## Complete usage examples
+
+### Sudoku game PDF export
+
+From the Sudoku game component:
+
+```typescript game-sudoku.component.ts
+import { Component, ViewChild } from '@angular/core';
+import { PdfService } from 'src/app/_services/__FileGeneration/pdf.service';
+
+export class SudokuComponent {
+  @ViewChild('_sudoku_board') sudokuBoard: any;
+  sudokuSolved = false;
+  pageTitle = 'Sudoku Game';
+
+  constructor(public pdfEngine: PdfService) {}
+
+  exportSudokuToPdf(): void {
+    const suffix = this.sudokuSolved ? 'SOLVED' : 'STARTED';
+    const fileName = `SUDOKU_BOARD_${suffix}`;
+
+    this.pdfEngine._GetPDF(
+      this.pageTitle,
+      this.sudokuBoard,
+      this.sudokuBoard,
+      fileName
+    ).subscribe({
+      next: (generatedFileName) => {
+        console.log('PDF generated:', generatedFileName);
+        this.status = `PDF file generated successfully`;
+      },
+      error: (error) => {
+        console.error('PDF generation error:', error.message);
+        this.status = 'An error occurred: ' + error.message;
+      },
+      complete: () => {
+        console.log('Export complete');
+      }
+    });
+  }
+}
+```
+
+### Chart export to PDF
+
+From the chart component:
+
+```typescript chart.component.ts
+import { Component, ViewChild, ElementRef } from '@angular/core';
+import { PdfService } from 'src/app/_services/__FileGeneration/pdf.service';
+
+export class ChartComponent {
+  @ViewChild('chartCanvas') chartCanvas: ElementRef;
+  @ViewChild('chartContainer') chartContainer: ElementRef;
+
+  constructor(public pdfService: PdfService) {}
+
+  exportChart(): void {
+    this.pdfService._GetPDF(
+      'Sales Chart',
+      this.chartCanvas,
+      this.chartContainer,
+      'sales_chart'
+    ).subscribe({
+      next: (filename) => {
+        this.showSuccessMessage(`Chart exported as ${filename}`);
+      },
+      error: (err) => {
+        this.showErrorMessage('Failed to export chart');
+      }
+    });
+  }
+}
+```
+
+### Backend PDF generation with progress
+
+```typescript pdf-generation.component.ts
+import { Component } from '@angular/core';
+import { HttpEventType, HttpResponse } from '@angular/common/http';
+import { PdfService } from 'src/app/_services/__FileGeneration/pdf.service';
+import { ConfigService } from 'src/app/_services/__Utils/ConfigService/config.service';
+
+export class PdfGenerationComponent {
+  progress = 0;
+  downloadLink = '';
+  pdfFileName = '';
+  statusMessage = '';
+
+  constructor(
+    public pdfService: PdfService,
+    public configService: ConfigService
+  ) {}
+
+  generatePdf(subjectName: string): void {
+    if (!subjectName) {
+      this.statusMessage = 'Please enter a subject name';
+      return;
+    }
+
+    this.progress = 0;
+    this.statusMessage = 'Generating PDF...';
+    this.downloadLink = '';
+
+    this.pdfService.GetPDF(subjectName).subscribe({
+      next: (event) => {
+        this.handleHttpEvent(event);
+      },
+      error: (err) => {
+        console.error('PDF generation error:', err);
+        this.statusMessage = 'An error occurred';
+        this.progress = 0;
+      },
+      complete: () => {
+        console.log('PDF generation completed');
+      }
+    });
+  }
+
+  private handleHttpEvent(event: any): void {
+    if (event.type === HttpEventType.Sent) {
+      this.progress = 25;
+      this.statusMessage = 'Request sent...';
+    } else if (event.type === HttpEventType.DownloadProgress) {
+      this.progress = 50;
+      this.statusMessage = 'Processing...';
+    } else if (event instanceof HttpResponse) {
+      this.progress = 100;
+      this.processPdfResponse(event.body);
+      this.statusMessage = 'File loaded correctly';
+    }
+  }
+
+  private processPdfResponse(responseBody: string): void {
+    const parts = responseBody.split('|');
+    
+    if (parts.length > 0) {
+      this.pdfFileName = parts[1];
+      const baseUrl = this.configService.getConfigValue('baseUrlNetCore');
+      const fileUrl = `${baseUrl}/wwwroot/output/uploadedfiles/pdf/${this.pdfFileName}`;
+      
+      // Clean up quotes from URL
+      this.downloadLink = fileUrl.replaceAll('"', '');
+      
+      console.log('PDF Filename:', this.pdfFileName);
+      console.log('Download URL:', this.downloadLink);
+    }
+  }
+
+  resetForm(): void {
+    this.progress = 0;
+    this.downloadLink = '';
+    this.pdfFileName = '';
+    this.statusMessage = 'Reset successful';
+  }
+}
+```
+
+## PDF generation options
+
+The service uses specific jsPDF configuration:
+
+```typescript
+const w = borderToPrint.offsetWidth;
+const h = borderToPrint.offsetHeight;
+const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+const pdfDoc = new jsPDF('landscape', 'px', [w, h]);
+pdfDoc.addImage(imgData, 'JPEG', 0, 0, w, h);
+pdfDoc.save(finalFileName);
+```
+
+<ParamField path="Orientation" type="landscape">
+  PDF is generated in landscape mode
+</ParamField>
+
+<ParamField path="Units" type="px">
+  Dimensions are specified in pixels
+</ParamField>
+
+<ParamField path="Image quality" type="0.95">
+  JPEG quality set to 95% for good balance of quality and file size
+</ParamField>
+
+<ParamField path="Image format" type="JPEG">
+  Canvas data is converted to JPEG format
+</ParamField>
+
+## API endpoint
+
+The backend PDF generation uses this endpoint:
+
+```
+GET ${baseUrlNetCore}api/PDFManager/GetPdf?subjectName={subjectName}
+```
+
+### Response format
+
+The backend returns a pipe-delimited string:
+
+```
+status|filename|localPath|imagePath
+```
+
+Example:
+```
+success|report_123.pdf|/var/files/report_123.pdf|/var/images/preview.jpg
+```
+
+## Error handling
+
+Implement comprehensive error handling for PDF generation:
+
+```typescript
+this.pdfService._GetPDF(title, canvas, container, fileName).subscribe({
+  next: (filename) => {
+    console.log('Success:', filename);
+  },
+  error: (error) => {
+    if (error.name === 'TypeError') {
+      console.error('Element not found or invalid');
+    } else if (error.message.includes('html2canvas')) {
+      console.error('Failed to capture HTML content');
+    } else if (error.message.includes('jsPDF')) {
+      console.error('Failed to create PDF document');
+    } else {
+      console.error('Unexpected error:', error);
+    }
+  }
+});
+```
+
+## Best practices
+
+<Tip>
+**Performance tips:**
+
+1. Keep the HTML content size reasonable (large elements take longer to convert)
+2. Avoid complex CSS animations during PDF generation
+3. Hide unnecessary UI elements before capture
+4. Use appropriate image quality settings (0.95 is a good default)
+5. Consider showing a loading indicator during generation
+</Tip>
+
+```typescript
+exportWithLoading(): void {
+  this.showLoader = true;
+  
+  this.pdfService._GetPDF(title, canvas, container, fileName)
+    .pipe(
+      finalize(() => this.showLoader = false)
+    )
+    .subscribe({
+      next: (filename) => console.log('Generated:', filename)
+    });
+}
+```
+
+## See also
+
+- [File generation overview](/services/overview)
+- [Base service](/services/base-service)
+- [Configuration service](/services/config-service)
+- [html2canvas documentation](https://html2canvas.hertzen.com/)
+- [jsPDF documentation](https://github.com/parallax/jsPDF)

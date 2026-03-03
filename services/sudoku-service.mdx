@@ -1,0 +1,311 @@
+---
+title: Sudoku service
+description: Angular service for generating and solving Sudoku puzzles using backend algorithms
+---
+
+The `SudokuService` provides methods to generate and solve Sudoku puzzles by communicating with backend APIs implemented in different programming languages (C++ and Node.js). It also supports file upload functionality for loading Sudoku puzzles from files.
+
+## Service location
+
+```typescript
+import { SudokuService } from 'src/app/_services/__Games/SudokuService/sudoku.service';
+```
+
+## Inheritance
+
+The service extends `BaseService`, inheriting HTTP options and common service functionality.
+
+```typescript
+export class SudokuService extends BaseService {
+  constructor(
+    public http: HttpClient,
+    public _configService: ConfigService
+  ) {
+    super();
+  }
+}
+```
+
+## Public methods
+
+### Generate Sudoku puzzles
+
+#### _GetSudoku_NodeJS()
+
+Generates a Sudoku puzzle using the Node.js backend implementation.
+
+<ParamField path="Returns" type="Observable<string>">
+  An Observable that emits the generated Sudoku puzzle as a JSON string
+</ParamField>
+
+```typescript
+const sudoku$ = this._sudokuService._GetSudoku_NodeJS();
+sudoku$.subscribe({
+  next: (jsonData: string) => {
+    console.log('Generated Sudoku:', jsonData);
+    // Process the Sudoku board
+  },
+  error: (err) => console.error('Generation failed:', err)
+});
+```
+
+<Tip>
+The returned JSON string contains a 9x9 matrix representing the Sudoku board, where 0 indicates an empty cell.
+</Tip>
+
+#### _GetSudoku_CPP()
+
+Generates a Sudoku puzzle using the C++ backend implementation via .NET Core.
+
+<ParamField path="Returns" type="Observable<string>">
+  An Observable that emits the generated Sudoku puzzle as a JSON string
+</ParamField>
+
+```typescript
+const sudoku$ = this._sudokuService._GetSudoku_CPP();
+sudoku$.subscribe({
+  next: (jsonData: string) => {
+    // Process the generated puzzle
+    this.board = this.parseJsonToBoard(jsonData);
+  }
+});
+```
+
+### Solve Sudoku puzzles
+
+#### _SolveSudoku_NodeJS()
+
+Solves a Sudoku puzzle using the Node.js backend solver.
+
+<ParamField path="p_matrix" type="string" required>
+  The Sudoku board matrix as a JSON string to be solved
+</ParamField>
+
+<ParamField path="Returns" type="Observable<string>">
+  An Observable that emits the solved Sudoku puzzle as a JSON string
+</ParamField>
+
+```typescript
+const matrix = JSON.stringify(this.currentBoard);
+const solved$ = this._sudokuService._SolveSudoku_NodeJS(matrix);
+
+solved$.subscribe({
+  next: (solvedBoard: string) => {
+    this.displaySolution(solvedBoard);
+    this.status = 'Solved successfully!';
+  },
+  error: (err) => {
+    console.error('Unable to solve:', err);
+  }
+});
+```
+
+#### _SolveSudoku_CPP()
+
+Solves a Sudoku puzzle using the C++ backend solver via .NET Core.
+
+<ParamField path="p_matrix" type="string" required>
+  The Sudoku board matrix as a JSON string to be solved
+</ParamField>
+
+<ParamField path="Returns" type="Observable<string>">
+  An Observable that emits the solved Sudoku puzzle as a JSON string
+</ParamField>
+
+```typescript
+const matrix = JSON.stringify(this.board);
+const solved$ = this._sudokuService._SolveSudoku_CPP(matrix);
+
+solved$.subscribe({
+  next: (solution: string) => {
+    this.board = this.parseJsonToBoard(solution);
+  }
+});
+```
+
+### File upload
+
+#### uploadSudoku()
+
+Uploads a Sudoku puzzle file to the backend for processing.
+
+<ParamField path="file" type="File" required>
+  The file containing the Sudoku puzzle to upload
+</ParamField>
+
+<ParamField path="Returns" type="Observable<HttpEvent<any>>">
+  An Observable that emits HTTP events including upload progress
+</ParamField>
+
+```typescript
+const file: File = this.selectedFiles.item(0);
+
+this._sudokuService.uploadSudoku(file).subscribe({
+  next: (event) => {
+    if (event.type === HttpEventType.UploadProgress) {
+      this.progress = Math.round((100 * event.loaded) / event.total);
+    } else if (event instanceof HttpResponse) {
+      const jsonData = event.body;
+      this.board = this.parseJsonToBoard(jsonData);
+      console.log('Upload complete');
+    }
+  },
+  error: (err) => {
+    console.error('Upload failed:', err);
+    this.progress = 0;
+  }
+});
+```
+
+<Tip>
+The upload method reports progress, allowing you to display a progress bar to users during file upload.
+</Tip>
+
+## Complete usage example
+
+Here's a complete example from the Sudoku game component:
+
+```typescript game-sudoku.component.ts
+import { Component, OnInit } from '@angular/core';
+import { SudokuService } from 'src/app/_services/__Games/SudokuService/sudoku.service';
+import { Observable } from 'rxjs';
+
+export class SudokuComponent implements OnInit {
+  board: number[][] = [];
+  sudokuGenerated: string = '';
+
+  constructor(public _sudokuService: SudokuService) {}
+
+  generateFromBackend(backend: 'cpp' | 'nodejs'): void {
+    let generatedSudoku: Observable<string>;
+    
+    // Choose backend implementation
+    if (backend === 'cpp') {
+      generatedSudoku = this._sudokuService._GetSudoku_CPP();
+    } else {
+      generatedSudoku = this._sudokuService._GetSudoku_NodeJS();
+    }
+
+    generatedSudoku.subscribe({
+      next: (jsonData: string) => {
+        this.sudokuGenerated = jsonData;
+        this.board = this.parseToBoard(jsonData);
+        console.log('Sudoku generated successfully');
+      },
+      error: (err: Error) => {
+        console.error('Generation error:', err.message);
+      }
+    });
+  }
+
+  solveSudoku(backend: 'cpp' | 'nodejs'): void {
+    let solveSudoku: Observable<string>;
+    
+    if (backend === 'cpp') {
+      solveSudoku = this._sudokuService._SolveSudoku_CPP(this.sudokuGenerated);
+    } else {
+      solveSudoku = this._sudokuService._SolveSudoku_NodeJS(this.sudokuGenerated);
+    }
+
+    solveSudoku.subscribe({
+      next: (jsonData: string) => {
+        this.board = this.parseToBoard(jsonData);
+        console.log('Sudoku solved successfully');
+      },
+      error: (err: Error) => {
+        console.error('Solve error:', err.message);
+      }
+    });
+  }
+
+  private parseToBoard(jsonData: string): number[][] {
+    // Clean up JSON formatting
+    let cleaned = jsonData
+      .replaceAll('[', '')
+      .replaceAll(']', '')
+      .replaceAll('},', '|')
+      .replaceAll('{', '')
+      .replaceAll('}', '');
+    
+    const rows = cleaned.split('|');
+    const board: number[][] = [];
+
+    for (let i = 0; i < 9; i++) {
+      const rowValues = rows[i].split(',');
+      const row: number[] = [];
+      for (let j = 0; j < 9; j++) {
+        row.push(parseInt(rowValues[j]));
+      }
+      board.push(row);
+    }
+
+    return board;
+  }
+}
+```
+
+## API endpoints
+
+The service communicates with the following backend endpoints:
+
+### Node.js endpoints
+
+- **Generate**: `${baseUrlNodeJs}Sudoku_Generate_NodeJS`
+- **Solve**: `${baseUrlNodeJs}Sudoku_Solve_NodeJS?p_matrix={matrix}`
+
+### C++/.NET Core endpoints
+
+- **Generate**: `${baseUrlNetCoreCPPEntry}api/Algorithm/Sudoku_Generate_CPP`
+- **Solve**: `${baseUrlNetCoreCPPEntry}api/Algorithm/Sudoku_Solve_CPP?p_matrix={matrix}`
+
+### File upload endpoint
+
+- **Upload**: `${baseUrlNetCore}api/FileManager/Sudoku_Upload_File`
+
+## Backend selection
+
+You can choose between C++ and Node.js implementations based on your requirements:
+
+<CodeGroup>
+```typescript C++ Backend
+// Typically faster for complex solving algorithms
+const sudoku$ = this._sudokuService._GetSudoku_CPP();
+const solved$ = this._sudokuService._SolveSudoku_CPP(matrix);
+```
+
+```typescript Node.js Backend
+// JavaScript-based implementation
+const sudoku$ = this._sudokuService._GetSudoku_NodeJS();
+const solved$ = this._sudokuService._SolveSudoku_NodeJS(matrix);
+```
+</CodeGroup>
+
+## Error handling
+
+Always implement proper error handling when using the service:
+
+```typescript
+this._sudokuService._GetSudoku_CPP().subscribe({
+  next: (data) => {
+    // Handle success
+  },
+  error: (error) => {
+    if (error.status === 404) {
+      console.error('Backend endpoint not found');
+    } else if (error.status === 500) {
+      console.error('Backend processing error');
+    } else {
+      console.error('Unexpected error:', error.message);
+    }
+  },
+  complete: () => {
+    // Cleanup or final actions
+  }
+});
+```
+
+## See also
+
+- [Game services overview](/services/overview)
+- [Configuration service](/services/config-service)
+- [Base service](/services/base-service)
