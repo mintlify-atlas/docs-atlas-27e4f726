@@ -1,0 +1,165 @@
+{
+  "projectType": "frontend",
+  "projectName": "Angular PWA Demo",
+  "projectDescription": "A Progressive Web Application showcasing algorithms, games, file generation, computer vision, and machine learning capabilities built with Angular 21.",
+  "theme": "palm",
+  "primaryColor": "#1976d2",
+  "lightColor": "#63a4ff",
+  "darkColor": "#004ba0",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "architecture/overview",
+              "architecture/pwa-features",
+              "architecture/routing",
+              "architecture/services"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/algorithms",
+              "features/games",
+              "features/file-generation",
+              "features/computer-vision",
+              "features/machine-learning"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/components",
+              "guides/services",
+              "guides/deployment",
+              "guides/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "Layout Components",
+            "pages": [
+              "components/base",
+              "components/landing",
+              "components/search"
+            ]
+          },
+          {
+            "group": "Algorithm Components",
+            "pages": [
+              "components/dijkstra",
+              "components/sorting",
+              "components/collision",
+              "components/regex"
+            ]
+          },
+          {
+            "group": "Game Components",
+            "pages": [
+              "components/sudoku",
+              "components/tictactoe",
+              "components/hanoi",
+              "components/tetris"
+            ]
+          },
+          {
+            "group": "Utility Components",
+            "pages": [
+              "components/chart",
+              "components/file-generation",
+              "components/speech-panel"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Services",
+        "groups": [
+          {
+            "group": "Core Services",
+            "pages": [
+              "services/algorithm-service",
+              "services/backend-service",
+              "services/config-service"
+            ]
+          },
+          {
+            "group": "AI Services",
+            "pages": [
+              "services/ocr-service",
+              "services/computer-vision-service",
+              "services/tensorflow-service"
+            ]
+          },
+          {
+            "group": "Game Services",
+            "pages": [
+              "services/sudoku-service",
+              "services/tetris-service"
+            ]
+          },
+          {
+            "group": "Utility Services",
+            "pages": [
+              "services/file-generation-service"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Progressive Web Application with offline support",
+    "Algorithm visualizations (Dijkstra, sorting, collision detection)",
+    "Interactive games with AI opponents (Sudoku, Tic-Tac-Toe, Hanoi, Tetris)",
+    "File generation capabilities (PDF, CSV, XLS, charts)",
+    "Computer vision and OCR integration",
+    "Machine learning demonstrations",
+    "3D graphics rendering with Three.js",
+    "Real-time chat functionality",
+    "Angular 21 with modern signals and dependency injection"
+  ],
+  "publicApiSurface": [
+    "AlgorithmService - Algorithm computation and visualization services",
+    "BackendService - API communication and data management",
+    "ConfigService - Application configuration management",
+    "OCRService - Optical character recognition capabilities",
+    "ComputerVisionService - Image processing and analysis",
+    "TensorFlowService - Machine learning model integration",
+    "SudokuService - Sudoku game logic and solving",
+    "TetrisService - Tetris game engine",
+    "BaseComponent - Foundation component for all views",
+    "LandingComponent - Entry point landing page",
+    "SearchComponent - Global search functionality",
+    "AlgorithmDijkstraComponent - Shortest path visualization",
+    "AlgorithmSortComponent - Sorting algorithm demonstrations",
+    "AlgorithmCollisionComponent - Collision detection demo",
+    "GameSudokuComponent - Interactive Sudoku game",
+    "GameTicTacToeComponent - Tic-Tac-Toe game with AI",
+    "GameHanoiComponent - Tower of Hanoi visualization",
+    "GameTetrisComponent - Tetris game with AI opponent",
+    "ChartComponent - Data visualization",
+    "FilesGenerationPDFComponent - PDF generation",
+    "FilesGenerationCSVComponent - CSV export",
+    "FilesGenerationXLSComponent - Excel file generation",
+    "LinearRegressionComponent - Machine learning demo",
+    "VisionHUBComponent - Computer vision demos",
+    "ChatComponent - Real-time messaging"
+  ]
+}
